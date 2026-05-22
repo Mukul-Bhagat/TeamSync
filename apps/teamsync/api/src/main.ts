@@ -1,83 +1,101 @@
 /**
- * VistaFam TeamSync API - Communication and Collaboration
- * Channels, messages, presence, notifications
+ * VistaFam TeamSync API - Communication and Collaboration Nervous System
+ * Channels, messages, DMs, threads, reactions, presence, notifications, voice rooms
+ * Integrates with PipeVista Realtime for websocket delivery
  */
 
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
-import { createLogger } from '@vistafam/logger';
+import { ServiceLogger } from '@vistafam/pipevista-core';
 
-const logger = createLogger('teamsync-api');
+// Routes
+import { channelRoutes } from './routes/channels.js';
+import { messageRoutes } from './routes/messages.js';
+import { dmRoutes } from './routes/dms.js';
+import { notificationRoutes } from './routes/notifications.js';
+import { presenceRoutes } from './routes/presence.js';
+import { fileRoutes } from './routes/files.js';
+import { searchRoutes } from './routes/search.js';
+import { voiceRoomRoutes } from './routes/voice-rooms.js';
+import { integrationRoutes } from './routes/integrations.js';
+
+// Workers
+import { createNotificationWorker } from './workers/notification-worker.js';
+import { startEventIntegrationWorker } from './workers/event-integration-worker.js';
+import { createAISummaryWorker } from './workers/ai-summary-worker.js';
+
+const logger = new ServiceLogger('teamsync-api');
 const app = Fastify({ logger: false });
 const PORT = parseInt(process.env.PORT ?? '4002', 10);
 
-// In-memory stores (replace with PostgreSQL + Redis in production)
-const channels = new Map<string, unknown>();
-const messages = new Map<string, unknown[]>();
-const presence = new Map<string, unknown>();
+// ── Health Endpoints ───────────────────────────────────────
 
-app.get('/health/live', async () => ({ status: 'alive' }));
-app.get('/health/ready', async () => ({ status: 'ready', version: '0.1.0' }));
-
-// Channels
-app.get('/api/v1/channels', async () => ({ channels: Array.from(channels.values()) }));
-
-app.post('/api/v1/channels', async (req, reply) => {
-  const body = req.body as { name: string; type: 'public' | 'private' | 'dm' };
-  const id = crypto.randomUUID();
-  const channel = { id, ...body, createdAt: new Date().toISOString() };
-  channels.set(id, channel);
-  messages.set(id, []);
-  logger.info(`Channel created: ${body.name} (${id})`);
-  reply.status(201).send(channel);
+app.get('/health/live', async () => ({ status: 'alive', service: 'teamsync-api' }));
+app.get('/health/ready', async () => ({ status: 'ready', version: '0.1.0', service: 'teamsync-api' }));
+app.get('/health/deep', async () => {
+  // Deep health: check Supabase connectivity
+  try {
+    const { getSupabase } = await import('./lib/supabase.js');
+    const supabase = getSupabase();
+    const { error } = await supabase.from('channels').select('id').limit(1);
+    if (error) throw error;
+    return { status: 'healthy', checks: { database: 'ok', realtime: 'ok' } };
+  } catch (err) {
+    return { status: 'unhealthy', error: (err as Error).message };
+  }
 });
 
-app.get('/api/v1/channels/:id', async (req, reply) => {
-  const { id } = req.params as { id: string };
-  const channel = channels.get(id);
-  if (!channel) { reply.status(404).send({ error: 'Channel not found' }); return; }
-  reply.send(channel);
-});
+// ── API Routes ─────────────────────────────────────────────
 
-// Messages
-app.get('/api/v1/channels/:id/messages', async (req) => {
-  const { id } = req.params as { id: string };
-  const channelMessages = messages.get(id) ?? [];
-  return { messages: channelMessages };
-});
+app.register(channelRoutes, { prefix: '/api' });
+app.register(messageRoutes, { prefix: '/api' });
+app.register(dmRoutes, { prefix: '/api' });
+app.register(notificationRoutes, { prefix: '/api' });
+app.register(presenceRoutes, { prefix: '/api' });
+app.register(fileRoutes, { prefix: '/api' });
+app.register(searchRoutes, { prefix: '/api' });
+app.register(voiceRoomRoutes, { prefix: '/api' });
+app.register(integrationRoutes, { prefix: '/api' });
 
-app.post('/api/v1/channels/:id/messages', async (req, reply) => {
-  const { id } = req.params as { id: string };
-  const body = req.body as { content: string; authorId: string };
-  const message = {
-    id: crypto.randomUUID(),
-    channelId: id,
-    ...body,
-    createdAt: new Date().toISOString(),
-  };
-  const channelMessages = messages.get(id) ?? [];
-  channelMessages.push(message);
-  messages.set(id, channelMessages);
-  logger.info(`Message sent in channel ${id}`);
-  reply.status(201).send(message);
-});
-
-// Presence
-app.get('/api/v1/presence', async () => ({ presence: Object.fromEntries(presence) }));
-
-app.post('/api/v1/presence', async (req, reply) => {
-  const body = req.body as { userId: string; status: string };
-  presence.set(body.userId, { ...body, lastSeen: new Date().toISOString() });
-  reply.send({ success: true });
-});
-
-// Notifications
-app.get('/api/v1/notifications', async () => ({ notifications: [] }));
+// ── Startup ────────────────────────────────────────────────
 
 async function start() {
   await app.register(cors, { origin: true, credentials: true });
   await app.register(helmet);
+
+  // Start workers
+  const notificationWorker = createNotificationWorker(5);
+  const aiSummaryWorker = createAISummaryWorker(2);
+  let eventWorker: { close: () => Promise<void> } | null = null;
+
+  try {
+    eventWorker = await startEventIntegrationWorker();
+    logger.info('Event integration worker started');
+  } catch (err) {
+    logger.warn('Failed to start event integration worker', { error: (err as Error).message });
+  }
+
+  logger.info('Workers started: notification(5), ai-summary(2), event-integration(1)');
+
+  // Graceful shutdown
+  process.on('SIGTERM', async () => {
+    logger.info('Shutting down workers and server...');
+    await notificationWorker.close();
+    await aiSummaryWorker.close();
+    if (eventWorker) await eventWorker.close();
+    await app.close();
+    process.exit(0);
+  });
+
+  process.on('SIGINT', async () => {
+    logger.info('Shutting down workers and server...');
+    await notificationWorker.close();
+    await aiSummaryWorker.close();
+    if (eventWorker) await eventWorker.close();
+    await app.close();
+    process.exit(0);
+  });
 
   try {
     await app.listen({ port: PORT, host: '0.0.0.0' });
@@ -87,8 +105,5 @@ async function start() {
     process.exit(1);
   }
 }
-
-process.on('SIGTERM', async () => { await app.close(); process.exit(0); });
-process.on('SIGINT', async () => { await app.close(); process.exit(0); });
 
 start();

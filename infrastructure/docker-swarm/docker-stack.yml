@@ -284,16 +284,52 @@ services:
     networks:
       - vistafam-overlay
 
-  flowboard:
-    image: vistafam/flowboard:latest
+  teamsync-api:
+    image: vistafam/teamsync-api:latest
     deploy:
       replicas: 2
+      placement:
+        constraints: [node.labels.layer == app]
+      update_config:
+        parallelism: 1
+        delay: 10s
     environment:
       - NODE_ENV=production
-      - PORT=4003
-      - DATABASE_URL=${DATABASE_URL}
+      - PORT=4002
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
       - REDIS_URL=redis://redis-cluster:6379
       - NATS_URL=nats://nats-cluster:4222
+      - REALTIME_URL=http://pipevista-realtime:4105
+      - EVENT_HUB_URL=http://pipevista-event-hub:4101
+      - MINIO_URL=http://minio:9000
+      - SFU_PROVIDER=${SFU_PROVIDER}
+      - SFU_URL=${SFU_URL}
+      - SFU_API_KEY=${SFU_API_KEY}
+      - AI_ROUTER_URL=http://pipevista-ai-router:4102
+      - FCM_SERVER_KEY=${FCM_SERVER_KEY}
+    ports:
+      - "4002:4002"
+    networks:
+      - vistafam-overlay
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:4002/health/live"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  teamsync-web:
+    image: vistafam/teamsync-web:latest
+    deploy:
+      replicas: 2
+      placement:
+        constraints: [node.labels.layer == edge]
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_TEAMSYNC_API_URL=http://teamsync-api:4002
+      - NEXT_PUBLIC_REALTIME_URL=http://pipevista-realtime:4105
+    ports:
+      - "3002:3002"
     networks:
       - vistafam-overlay
 
