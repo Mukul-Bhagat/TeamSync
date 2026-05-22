@@ -1,0 +1,62 @@
+{
+  "dashboard": {
+    "id": null,
+    "uid": "vistafam-queues",
+    "title": "VistaFam - Job Queues",
+    "tags": ["vistafam", "queues", "bullmq"],
+    "timezone": "utc",
+    "schemaVersion": 36,
+    "refresh": "10s",
+    "panels": [
+      {
+        "id": 1,
+        "title": "Queue Depth",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "bullmq_queue_waiting",
+            "legendFormat": "{{ queue }}"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0}
+      },
+      {
+        "id": 2,
+        "title": "Processing Rate",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "rate(bullmq_queue_completed[5m])",
+            "legendFormat": "{{ queue }}"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0}
+      },
+      {
+        "id": 3,
+        "title": "Failed Jobs",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "rate(bullmq_queue_failed[5m])",
+            "legendFormat": "{{ queue }}"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8}
+      },
+      {
+        "id": 4,
+        "title": "Job Duration (P99)",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.99, sum(rate(bullmq_job_duration_seconds_bucket[5m])) by (queue, le))",
+            "legendFormat": "{{ queue }}"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8}
+      }
+    ]
+  },
+  "overwrite": true
+}

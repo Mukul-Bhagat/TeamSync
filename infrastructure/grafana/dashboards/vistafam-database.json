@@ -1,0 +1,81 @@
+{
+  "dashboard": {
+    "id": null,
+    "uid": "vistafam-database",
+    "title": "VistaFam - Database",
+    "tags": ["vistafam", "database", "postgres"],
+    "timezone": "utc",
+    "schemaVersion": 36,
+    "refresh": "10s",
+    "panels": [
+      {
+        "id": 1,
+        "title": "Connections",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "pg_stat_activity_count{datname=\"vistafam\"}",
+            "legendFormat": "Active"
+          },
+          {
+            "expr": "pg_stat_database_numbackends{datname=\"vistafam\"}",
+            "legendFormat": "Total"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0}
+      },
+      {
+        "id": 2,
+        "title": "Transactions",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "rate(pg_stat_database_xact_commit{datname=\"vistafam\"}[5m])",
+            "legendFormat": "Commits/sec"
+          },
+          {
+            "expr": "rate(pg_stat_database_xact_rollback{datname=\"vistafam\"}[5m])",
+            "legendFormat": "Rollbacks/sec"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0}
+      },
+      {
+        "id": 3,
+        "title": "Cache Hit Ratio",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "(pg_stat_database_blks_hit{datname=\"vistafam\"} / (pg_stat_database_blks_hit{datname=\"vistafam\"} + pg_stat_database_blks_read{datname=\"vistafam\"})) * 100"
+          }
+        ],
+        "gridPos": {"h": 4, "w": 6, "x": 0, "y": 8}
+      },
+      {
+        "id": 4,
+        "title": "Database Size",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "pg_database_size_bytes{datname=\"vistafam\"}",
+            "legendFormat": "vistafam"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 6, "y": 8}
+      },
+      {
+        "id": 5,
+        "title": "Slow Queries",
+        "type": "table",
+        "targets": [
+          {
+            "expr": "pg_stat_statements_mean_time > 100",
+            "format": "table"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 24, "x": 0, "y": 16}
+      }
+    ]
+  },
+  "overwrite": true
+}

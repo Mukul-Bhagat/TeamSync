@@ -1,0 +1,16 @@
+# VistaFam Production Environment
+# Single VPS (Hetzner CPX31) — all services on one node
+# Uses pre-built images from GHCR
+#
+# Deploy:
+#   cd /opt/vistafam
+#   docker-compose -f infrastructure/environments/production/docker-compose.yml up -d
+
+version: '3.8'
+
+# This compose extends the root production compose.
+# For production, use the root docker-compose.production.yml directly.
+# This file exists for environment-specific overrides.
+
+include:
+  - ../../../docker-compose.production.yml

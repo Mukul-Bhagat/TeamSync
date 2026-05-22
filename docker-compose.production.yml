@@ -1,0 +1,874 @@
+# VistaFam Enterprise - Production Docker Compose
+# Single VPS deployment (Hetzner CPX31: 4vCPU/16GB)
+# Only NGINX is exposed externally. All services communicate internally.
+#
+# Prerequisites:
+#   1. Copy .env.example to .env and fill in secrets
+#   2. Generate self-signed SSL: openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+#        -keyout infrastructure/nginx/ssl/selfsigned.key \
+#        -out infrastructure/nginx/ssl/selfsigned.crt
+#   3. docker-compose -f docker-compose.production.yml up -d
+
+version: '3.8'
+
+services:
+  # ── Edge Layer ──────────────────────────────────────────────
+  nginx:
+    image: nginx:alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./infrastructure/nginx/nginx.prod.conf:/etc/nginx/nginx.conf:ro
+      - ./infrastructure/nginx/ssl:/etc/nginx/ssl:ro
+      - ./infrastructure/nginx/certbot-data:/etc/letsencrypt:ro
+    depends_on:
+      - gateway
+      - teamsync-web
+      - pipevista-realtime
+      - grafana
+    networks:
+      - vistafam
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 128M
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost/nginx-health"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  certbot:
+    image: certbot/certbot:latest
+    restart: unless-stopped
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew --quiet --no-self-upgrade; sleep 12h; done'"
+    volumes:
+      - ./infrastructure/nginx/certbot-data:/etc/letsencrypt
+      - ./infrastructure/nginx/certbot-www:/var/www/certbot
+    networks:
+      - vistafam
+    deploy:
+      resources:
+        limits:
+          cpus: '0.10'
+          memory: 64M
+
+  # ── Core Services ───────────────────────────────────────────
+  gateway:
+    image: ghcr.io/vistafam/gateway:latest
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      NATS_URL: nats://nats:4222
+      REDIS_URL: redis://redis:6379
+      AUTHSPHERE_URL: http://authsphere:4001
+      PIPEVISTA_URL: http://pipevista:4006
+      JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY}
+    depends_on:
+      nats:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      authsphere:
+        condition: service_healthy
+      pipevista:
+        condition: service_healthy
+    networks:
+      - vistafam
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:4000/health/live"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  authsphere:
+    image: ghcr.io/vistafam/authsphere:latest
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 4001
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/vistafam?schema=authsphere
+      REDIS_URL: redis://redis:6379
+      NATS_URL: nats://nats:4222
+      JWT_PRIVATE_KEY: ${JWT_PRIVATE_KEY}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      nats:
+        condition: service_healthy
+    networks:
+      - vistafam
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:4001/health/live"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  teamsync-api:
+    image: ghcr.io/vistafam/teamsync-api:latest
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 4002
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/vistafam?schema=teamsync
+      REDIS_URL: redis://redis:6379
+      NATS_URL: nats://nats:4222
+      AUTHSPHERE_URL: http://authsphere:4001
+      SUPABASE_URL: ${SUPABASE_URL}
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
+      REALTIME_URL: http://pipevista-realtime:4105
+      MINIO_URL: http://minio:9000
+      SFU_PROVIDER: ${SFU_PROVIDER}
+      SFU_URL: ${SFU_URL}
+      SFU_API_KEY: ${SFU_API_KEY}
+      AI_ROUTER_URL: http://pipevista-ai-router:4102
+      FCM_SERVER_KEY: ${FCM_SERVER_KEY}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      nats:
+        condition: service_healthy
+      authsphere:
+        condition: service_healthy
+    networks:
+      - vistafam
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:4002/health/live"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  teamsync-notification-worker:
+    image: ghcr.io/vistafam/teamsync-api:latest
+    restart: unless-stopped
+    command: node dist/workers/notification-worker.js
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/vistafam?schema=teamsync
+      REDIS_URL: redis://redis:6379
+      NATS_URL: nats://nats:4222
+      FCM_SERVER_KEY: ${FCM_SERVER_KEY}
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    networks:
+      - vistafam
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 256M
+
+  teamsync-ai-worker:
+    image: ghcr.io/vistafam/teamsync-api:latest
+    restart: unless-stopped
+    command: node dist/workers/ai-summary-worker.js
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/vistafam?schema=teamsync
+      REDIS_URL: redis://redis:6379
+      AI_ROUTER_URL: http://pipevista-ai-router:4102
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    networks:
+      - vistafam
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 256M
+
+  teamsync-web:
+    image: ghcr.io/vistafam/teamsync-web:latest
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3002
+      NEXT_PUBLIC_API_URL: /api/v1
+      NEXT_PUBLIC_WS_URL: ws://localhost:4002
+    depends_on:
+      gateway:
+        condition: service_healthy
+      teamsync-api:
+        condition: service_healthy
+    networks:
+      - vistafam
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3002"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  flowboard:
+    image: ghcr.io/vistafam/flowboard:latest
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 4003
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/vistafam?schema=flowboard
+      REDIS_URL: redis://redis:6379
+      NATS_URL: nats://nats:4222
+      AUTHSPHERE_URL: http://authsphere:4001
+      AI_ROUTER_URL: http://pipevista-ai-router:4102
+      EVENT_HUB_URL: http://pipevista-event-hub:4101
+      REALTIME_URL: http://pipevista-realtime:4105
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      nats:
+        condition: service_healthy
+      authsphere:
+        condition: service_healthy
+    networks:
+      - vistafam
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:4003/health/live"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  vaultspace:
+    image: ghcr.io/vistafam/vaultspace:latest
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 4004
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/vistafam?schema=vaultspace
+      REDIS_URL: redis://redis:6379
+      NATS_URL: nats://nats:4222
+      AUTHSPHERE_URL: http://authsphere:4001
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      nats:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      authsphere:
+        condition: service_healthy
+    networks:
+      - vistafam
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:4004/health/live"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  loglens:
+    image: ghcr.io/vistafam/loglens:latest
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 4007
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/vistafam?schema=loglens
+      REDIS_URL: redis://redis:6379
+      NATS_URL: nats://nats:4222
+      LOKI_URL: http://loki:3100
+      AUTHSPHERE_URL: http://authsphere:4001
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      nats:
+        condition: service_healthy
+      loki:
+        condition: service_started
+      authsphere:
+        condition: service_healthy
+    networks:
+      - vistafam
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:4007/health/live"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  devpulse:
+    image: ghcr.io/vistafam/devpulse:latest
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 4008
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/vistafam?schema=devpulse
+      REDIS_URL: redis://redis:6379
+      NATS_URL: nats://nats:4222
+      AUTHSPHERE_URL: http://authsphere:4001
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      nats:
+        condition: service_healthy
+      authsphere:
+        condition: service_healthy
+    networks:
+      - vistafam
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:4008/health/live"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  schemaforge:
+    image: ghcr.io/vistafam/schemaforge:latest
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 4009
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/vistafam?schema=schemaforge
+      REDIS_URL: redis://redis:6379
+      NATS_URL: nats://nats:4222
+      AUTHSPHERE_URL: http://authsphere:4001
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      nats:
+        condition: service_healthy
+      authsphere:
+        condition: service_healthy
+    networks:
+      - vistafam
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:4009/health/live"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  querymind:
+    image: ghcr.io/vistafam/querymind:latest
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 4010
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/vistafam?schema=querymind
+      REDIS_URL: redis://redis:6379
+      NATS_URL: nats://nats:4222
+      AUTHSPHERE_URL: http://authsphere:4001
+      INSIGHTAI_URL: http://insightai:4012
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      nats:
+        condition: service_healthy
+      authsphere:
+        condition: service_healthy
+      insightai:
+        condition: service_healthy
+    networks:
+      - vistafam
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:4010/health/live"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  deployhub:
+    image: ghcr.io/vistafam/deployhub:latest
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 4011
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/vistafam?schema=deployhub
+      REDIS_URL: redis://redis:6379
+      NATS_URL: nats://nats:4222
+      AUTHSPHERE_URL: http://authsphere:4001
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      nats:
+        condition: service_healthy
+      authsphere:
+        condition: service_healthy
+    networks:
+      - vistafam
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:4011/health/live"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  insightai:
+    image: ghcr.io/vistafam/insightai:latest
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 4012
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/vistafam?schema=insightai
+      REDIS_URL: redis://redis:6379
+      NATS_URL: nats://nats:4222
+      AUTHSPHERE_URL: http://authsphere:4001
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      nats:
+        condition: service_healthy
+      authsphere:
+        condition: service_healthy
+    networks:
+      - vistafam
+    deploy:
+      resources:
+        limits:
+          cpus: '1.00'
+          memory: 1G
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:4012/health/live"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  pipevista:
+    image: ghcr.io/vistafam/pipevista:latest
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 4006
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/vistafam?schema=pipevista
+      REDIS_URL: redis://redis:6379
+      NATS_URL: nats://nats:4222
+      AUTHSPHERE_URL: http://authsphere:4001
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      nats:
+        condition: service_healthy
+      authsphere:
+        condition: service_healthy
+    networks:
+      - vistafam
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:4006/health/live"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  pipevista-event-hub:
+    image: ghcr.io/vistafam/pipevista-event-hub:latest
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 4101
+      NATS_URL: nats://nats:4222
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      nats:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - vistafam
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:4101/health/live"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  pipevista-ai-router:
+    image: ghcr.io/vistafam/pipevista-ai-router:latest
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 4102
+      REDIS_URL: redis://redis:6379
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY}
+      OLLAMA_URL: ${OLLAMA_URL}
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - vistafam
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:4102/health/live"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  pipevista-realtime:
+    image: ghcr.io/vistafam/pipevista-realtime:latest
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 4105
+      REDIS_URL: redis://redis:6379
+      NATS_URL: nats://nats:4222
+    depends_on:
+      redis:
+        condition: service_healthy
+      nats:
+        condition: service_healthy
+    networks:
+      - vistafam
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:4105/health/live"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  # ── Infrastructure ──────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: vistafam
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: vistafam
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./supabase/migrations:/docker-entrypoint-initdb.d:ro
+      - ./backups/wal:/archive
+    command: >
+      postgres
+      -c shared_buffers=4GB
+      -c effective_cache_size=12GB
+      -c max_connections=200
+      -c work_mem=16MB
+      -c maintenance_work_mem=512MB
+      -c wal_level=replica
+      -c archive_mode=on
+      -c archive_command='cp %p /archive/%f'
+      -c max_wal_senders=3
+      -c log_destination=stderr
+      -c logging_collector=on
+      -c log_directory=/var/log/postgresql
+      -c log_filename='postgresql-%Y-%m-%d_%H%M%S.log'
+    networks:
+      - vistafam
+    deploy:
+      resources:
+        limits:
+          cpus: '1.50'
+          memory: 4G
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vistafam"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: >
+      redis-server
+      --appendonly yes
+      --maxmemory 1gb
+      --maxmemory-policy allkeys-lru
+      --save 60 1000
+      --bind 0.0.0.0
+      --protected-mode no
+    volumes:
+      - redis_data:/data
+    networks:
+      - vistafam
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 1G
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  nats:
+    image: nats:2-alpine
+    restart: unless-stopped
+    command: >
+      --js
+      --store_dir /data/jetstream
+      --http_port 8222
+    volumes:
+      - nats_data:/data/jetstream
+    networks:
+      - vistafam
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 256M
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8222/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  minio:
+    image: minio/minio:latest
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY}
+    volumes:
+      - minio_data:/data
+    networks:
+      - vistafam
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 512M
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  # ── Observability ───────────────────────────────────────────
+  prometheus:
+    image: prom/prometheus:latest
+    restart: unless-stopped
+    volumes:
+      - ./infrastructure/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    networks:
+      - vistafam
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:9090/-/healthy"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  grafana:
+    image: grafana/grafana:latest
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
+      GF_SERVER_ROOT_URL: /grafana/
+      GF_SERVER_SERVE_FROM_SUB_PATH: "true"
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_INSTALL_PLUGINS: grafana-lokiexplore-app
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./infrastructure/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./infrastructure/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+    depends_on:
+      prometheus:
+        condition: service_healthy
+      loki:
+        condition: service_started
+    networks:
+      - vistafam
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 256M
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  loki:
+    image: grafana/loki:latest
+    restart: unless-stopped
+    volumes:
+      - ./infrastructure/loki/loki.yml:/etc/loki/local-config.yaml:ro
+      - loki_data:/loki
+    networks:
+      - vistafam
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
+
+  promtail:
+    image: grafana/promtail:latest
+    restart: unless-stopped
+    volumes:
+      - ./infrastructure/loki/promtail.yml:/etc/promtail/config.yml:ro
+      - /var/log:/var/log:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    depends_on:
+      loki:
+        condition: service_started
+    networks:
+      - vistafam
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 128M
+
+  node-exporter:
+    image: prom/node-exporter:latest
+    restart: unless-stopped
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.rootfs=/rootfs'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|run|var/lib/docker/.+|var/lib/kubelet/.+)($|/)'
+    networks:
+      - vistafam
+    deploy:
+      resources:
+        limits:
+          cpus: '0.10'
+          memory: 64M
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:latest
+    restart: unless-stopped
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    networks:
+      - vistafam
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 128M
+
+# ── Volumes ─────────────────────────────────────────────────
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  nats_data:
+    driver: local
+  minio_data:
+    driver: local
+  loki_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+
+# ── Networks ────────────────────────────────────────────────
+networks:
+  vistafam:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16

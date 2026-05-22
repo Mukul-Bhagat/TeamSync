@@ -19,6 +19,7 @@ import { fileRoutes } from './routes/files.js';
 import { searchRoutes } from './routes/search.js';
 import { voiceRoomRoutes } from './routes/voice-rooms.js';
 import { integrationRoutes } from './routes/integrations.js';
+import { aiSummaryRoutes } from './routes/ai-summary.js';
 
 // Workers
 import { createNotificationWorker } from './workers/notification-worker.js';
@@ -57,6 +58,7 @@ app.register(fileRoutes, { prefix: '/api' });
 app.register(searchRoutes, { prefix: '/api' });
 app.register(voiceRoomRoutes, { prefix: '/api' });
 app.register(integrationRoutes, { prefix: '/api' });
+app.register(aiSummaryRoutes, { prefix: '/api' });
 
 // ── Startup ────────────────────────────────────────────────
 

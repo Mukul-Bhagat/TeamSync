@@ -1,0 +1,34 @@
+name: Daily Backup
+
+on:
+  schedule:
+    - cron: '0 3 * * *'  # 3 AM UTC daily
+  workflow_dispatch:
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.VPS_SSH_KEY }}
+
+      - name: Run backup on Production VPS
+        run: |
+          ssh -o StrictHostKeyChecking=no ${{ secrets.VPS_USER }}@${{ secrets.PROD_VPS_HOST }} << 'EOF'
+            set -e
+            cd /opt/vistafam
+            ./scripts/backup.sh
+          EOF
+
+      - name: Verify backup uploaded
+        run: |
+          # Check if backup exists in Object Storage
+          # aws s3 ls s3://vistafam-backups/postgres/ --recursive | tail -5
+          echo "Backup verification placeholder - configure AWS CLI for actual check"
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "BACKUP FAILED - investigate immediately"

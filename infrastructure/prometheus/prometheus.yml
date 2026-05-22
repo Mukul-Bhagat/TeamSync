@@ -99,7 +99,38 @@ scrape_configs:
     static_configs:
       - targets: ['postgres-exporter:9187']
 
-  # Redis Exporter (when added)
+  # Redis Exporter
   - job_name: 'redis'
     static_configs:
       - targets: ['redis-exporter:9121']
+
+  # Node Exporter (VPS metrics)
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['node-exporter:9100']
+
+  # cAdvisor (Docker container metrics)
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets: ['cadvisor:8080']
+
+  # PipeVista Core Services
+  - job_name: 'pipevista-event-hub'
+    static_configs:
+      - targets: ['pipevista-event-hub:4101']
+    metrics_path: /metrics
+
+  - job_name: 'pipevista-ai-router'
+    static_configs:
+      - targets: ['pipevista-ai-router:4102']
+    metrics_path: /metrics
+
+  - job_name: 'pipevista-realtime'
+    static_configs:
+      - targets: ['pipevista-realtime:4105']
+    metrics_path: /metrics
+
+  # NGINX Exporter
+  - job_name: 'nginx'
+    static_configs:
+      - targets: ['nginx-exporter:9113']

@@ -33,7 +33,11 @@
     "@vistafam/logger": "workspace:*",
     "@vistafam/config": "workspace:*",
     "@vistafam/realtime": "workspace:*",
-    "@vistafam/types": "workspace:*"
+    "@vistafam/types": "workspace:*",
+    "@vistafam/pipevista-core": "workspace:*",
+    "@supabase/supabase-js": "^2.45.0",
+    "bullmq": "^5.12.0",
+    "axios": "^1.7.0"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",

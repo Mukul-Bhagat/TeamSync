@@ -1,6 +1,16 @@
 -- TeamSync Schema Extensions
 -- Threads, reactions, mentions, DMs, notifications, files, voice rooms, audit logs, search
 
+-- ── Schema Updates to Existing Tables ───────────────────────
+
+-- Add parent_message_id to messages for thread replies
+ALTER TABLE messages ADD COLUMN IF NOT EXISTS parent_message_id UUID REFERENCES messages(id) ON DELETE CASCADE;
+CREATE INDEX IF NOT EXISTS idx_messages_parent ON messages(parent_message_id);
+
+-- Add archived_at to channels for soft delete
+ALTER TABLE channels ADD COLUMN IF NOT EXISTS archived_at TIMESTAMPTZ;
+CREATE INDEX IF NOT EXISTS idx_channels_archived ON channels(archived_at) WHERE archived_at IS NULL;
+
 -- ── Threads ──────────────────────────────────────────────────
 
 CREATE TABLE IF NOT EXISTS message_threads (

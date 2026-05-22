@@ -15,10 +15,12 @@ export async function channelRoutes(app: FastifyInstance) {
     const supabase = getSupabase();
 
     // Get channels user is a member of + all public channels in workspace
+    // Exclude archived channels
     const { data, error } = await supabase
       .from('channels')
       .select('*, channel_members!inner(role)')
       .eq('workspace_id', tenantId)
+      .is('archived_at', null)
       .or(`is_private.eq.false,channel_members.user_id.eq.${userId}`)
       .order('created_at', { ascending: true });
 
@@ -82,14 +84,16 @@ export async function channelRoutes(app: FastifyInstance) {
     reply.send({ channel: data });
   });
 
-  // ── Delete channel ─────────────────────────────────────
+  // ── Delete channel (soft delete / archive) ─────────────
   app.delete('/v1/channels/:id', async (req, reply) => {
     const { id } = req.params as { id: string };
     const supabase = getSupabase();
 
-    const { error } = await supabase.from('channels').delete().eq('id', id);
+    const { error } = await supabase.from('channels').update({
+      archived_at: new Date().toISOString(),
+    }).eq('id', id);
     if (error) { reply.status(500).send({ error: error.message }); return; }
-    reply.send({ success: true });
+    reply.send({ success: true, archived: true });
   });
 
   // ── List members ───────────────────────────────────────

@@ -52,6 +52,7 @@ export async function messageRoutes(app: FastifyInstance) {
         sender_name: body.sender_name,
         sender_avatar: body.sender_avatar,
         content: body.content,
+        parent_message_id: body.parent_message_id ?? null,
       })
       .select()
       .single();
@@ -60,9 +61,12 @@ export async function messageRoutes(app: FastifyInstance) {
 
     // Handle thread reply
     if (body.parent_message_id) {
+      const { data: thread } = await supabase.from('message_threads')
+        .select('reply_count').eq('parent_message_id', body.parent_message_id).single();
+
       await supabase.from('message_threads').upsert({
         parent_message_id: body.parent_message_id,
-        reply_count: supabase.rpc('increment_reply_count', { parent_id: body.parent_message_id }),
+        reply_count: (thread?.reply_count ?? 0) + 1,
         last_reply_at: new Date().toISOString(),
       }, { onConflict: 'parent_message_id' });
 
@@ -120,6 +124,21 @@ export async function messageRoutes(app: FastifyInstance) {
     });
 
     reply.status(201).send({ message });
+  });
+
+  // ── Get single message ─────────────────────────────────
+  app.get('/v1/messages/:id', async (req, reply) => {
+    const { id } = req.params as { id: string };
+    const supabase = getSupabase();
+
+    const { data, error } = await supabase
+      .from('messages')
+      .select('*, message_reactions(*), message_mentions(*)')
+      .eq('id', id)
+      .single();
+
+    if (error || !data) { reply.status(404).send({ error: 'Message not found' }); return; }
+    reply.send({ message: data });
   });
 
   // ── Update message ─────────────────────────────────────
