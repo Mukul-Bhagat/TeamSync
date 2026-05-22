@@ -1,0 +1,31 @@
+{
+  "name": "@vistafam/legacy-api",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Legacy API (being migrated to individual service apps)",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "lint": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist node_modules"
+  },
+  "dependencies": {
+    "@vistafam/types": "workspace:*",
+    "@vistafam/validation": "workspace:*",
+    "@vistafam/database": "workspace:*",
+    "@vistafam/logger": "workspace:*",
+    "@supabase/supabase-js": "^2.45.0",
+    "fastify": "^5.0.0",
+    "@fastify/cors": "^10.0.0",
+    "@fastify/helmet": "^12.0.0",
+    "@fastify/rate-limit": "^10.0.0",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.0.0",
+    "typescript": "^5.5.0"
+  }
+}

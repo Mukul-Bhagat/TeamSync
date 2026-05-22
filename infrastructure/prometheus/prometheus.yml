@@ -1,0 +1,105 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'vistafam'
+    replica: 'prometheus-1'
+
+alerting:
+  alertmanagers: []
+
+rule_files: []
+
+scrape_configs:
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # Gateway
+  - job_name: 'gateway'
+    static_configs:
+      - targets: ['gateway:4000']
+    metrics_path: /metrics
+
+  # AuthSphere
+  - job_name: 'authsphere'
+    static_configs:
+      - targets: ['authsphere:4001']
+    metrics_path: /metrics
+
+  # TeamSync API
+  - job_name: 'teamsync-api'
+    static_configs:
+      - targets: ['teamsync-api:4002']
+    metrics_path: /metrics
+
+  # FlowBoard
+  - job_name: 'flowboard'
+    static_configs:
+      - targets: ['flowboard:4003']
+    metrics_path: /metrics
+
+  # VaultSpace
+  - job_name: 'vaultspace'
+    static_configs:
+      - targets: ['vaultspace:4004']
+    metrics_path: /metrics
+
+  # PipeVista
+  - job_name: 'pipevista'
+    static_configs:
+      - targets: ['pipevista:4006']
+    metrics_path: /metrics
+
+  # LogLens
+  - job_name: 'loglens'
+    static_configs:
+      - targets: ['loglens:4007']
+    metrics_path: /metrics
+
+  # DevPulse
+  - job_name: 'devpulse'
+    static_configs:
+      - targets: ['devpulse:4008']
+    metrics_path: /metrics
+
+  # SchemaForge
+  - job_name: 'schemaforge'
+    static_configs:
+      - targets: ['schemaforge:4009']
+    metrics_path: /metrics
+
+  # QueryMind
+  - job_name: 'querymind'
+    static_configs:
+      - targets: ['querymind:4010']
+    metrics_path: /metrics
+
+  # DeployHub
+  - job_name: 'deployhub'
+    static_configs:
+      - targets: ['deployhub:4011']
+    metrics_path: /metrics
+
+  # InsightAI
+  - job_name: 'insightai'
+    static_configs:
+      - targets: ['insightai:4012']
+    metrics_path: /metrics
+
+  # NATS
+  - job_name: 'nats'
+    static_configs:
+      - targets: ['nats:8222']
+    metrics_path: /metrics
+
+  # PostgreSQL Exporter (when added)
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ['postgres-exporter:9187']
+
+  # Redis Exporter (when added)
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis-exporter:9121']

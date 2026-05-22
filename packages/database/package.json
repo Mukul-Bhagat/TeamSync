@@ -1,0 +1,32 @@
+{
+  "name": "@vistafam/database",
+  "version": "0.1.0",
+  "private": true,
+  "description": "VistaFam database utilities - PostgreSQL connection, migrations, Prisma helpers",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "lint": "eslint src --ext .ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "clean": "rm -rf dist",
+    "migrate:up": "prisma migrate deploy",
+    "migrate:dev": "prisma migrate dev",
+    "generate": "prisma generate",
+    "seed": "tsx src/seed.ts"
+  },
+  "dependencies": {
+    "@vistafam/types": "workspace:*",
+    "@prisma/client": "^5.15.0",
+    "prisma": "^5.15.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.5.0",
+    "vitest": "^2.0.0",
+    "eslint": "^8.0.0",
+    "tsx": "^4.0.0"
+  }
+}

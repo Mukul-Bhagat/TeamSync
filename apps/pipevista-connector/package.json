@@ -1,0 +1,35 @@
+{
+  "name": "@vistafam/pipevista-connector",
+  "version": "0.1.0",
+  "private": true,
+  "description": "PipeVista Connector - Webhook dispatcher, external API proxy, connector management, protocol adapters",
+  "main": "dist/main.js",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx watch src/main.ts",
+    "start": "node dist/main.js",
+    "lint": "eslint src --ext .ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "fastify": "^4.28.0",
+    "@fastify/cors": "^9.0.0",
+    "@fastify/helmet": "^11.0.0",
+    "bullmq": "^5.0.0",
+    "ioredis": "^5.4.0",
+    "axios": "^1.7.0",
+    "zod": "^3.23.0",
+    "dotenv": "^16.4.0",
+    "@vistafam/pipevista-core": "workspace:*",
+    "@vistafam/logger": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "tsx": "^4.0.0",
+    "typescript": "^5.5.0",
+    "vitest": "^2.0.0",
+    "eslint": "^8.0.0"
+  }
+}

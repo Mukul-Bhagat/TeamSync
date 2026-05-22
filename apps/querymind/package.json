@@ -1,0 +1,43 @@
+{
+  "name": "@vistafam/querymind",
+  "version": "0.1.0",
+  "private": true,
+  "description": "VistaFam QueryMind - AI database intelligence and NL-to-SQL",
+  "main": "dist/main.js",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx watch src/main.ts",
+    "start": "node dist/main.js",
+    "lint": "eslint src --ext .ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "clean": "rm -rf dist",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev"
+  },
+  "dependencies": {
+    "fastify": "^4.28.0",
+    "@fastify/cors": "^9.0.0",
+    "@fastify/helmet": "^11.0.0",
+    "prisma": "^5.15.0",
+    "@prisma/client": "^5.15.0",
+    "nats": "^2.28.0",
+    "ioredis": "^5.4.0",
+    "pino": "^9.0.0",
+    "zod": "^3.23.0",
+    "dotenv": "^16.4.0",
+    "@vistafam/auth-client": "workspace:*",
+    "@vistafam/events": "workspace:*",
+    "@vistafam/logger": "workspace:*",
+    "@vistafam/config": "workspace:*",
+    "@vistafam/ai-client": "workspace:*",
+    "@vistafam/types": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "tsx": "^4.0.0",
+    "typescript": "^5.5.0",
+    "vitest": "^2.0.0",
+    "eslint": "^8.0.0"
+  }
+}

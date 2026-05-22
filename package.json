@@ -1,0 +1,38 @@
+{
+  "name": "vistafam-enterprise",
+  "private": true,
+  "description": "VistaFam - Production-grade AI-native SaaS ecosystem monorepo",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev --parallel",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "format": "prettier --write \"**/*.{ts,tsx,md,json}\"",
+    "clean": "turbo run clean && rm -rf node_modules",
+    "test": "turbo run test",
+    "test:e2e": "turbo run test:e2e",
+    "docker:build": "docker-compose -f docker-compose.yml build",
+    "docker:up": "docker-compose -f docker-compose.yml up -d",
+    "docker:down": "docker-compose -f docker-compose.yml down",
+    "infra:up": "docker-compose -f docker-compose.infra.yml up -d",
+    "db:migrate": "pnpm --filter @vistafam/database migrate:up",
+    "db:generate": "pnpm --filter @vistafam/database generate",
+    "db:seed": "pnpm --filter @vistafam/database seed"
+  },
+  "devDependencies": {
+    "turbo": "^2.0.0",
+    "prettier": "^3.3.0",
+    "typescript": "^5.5.0",
+    "husky": "^9.0.0",
+    "lint-staged": "^15.0.0",
+    "@types/node": "^20.0.0"
+  },
+  "packageManager": "pnpm@9.15.9",
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

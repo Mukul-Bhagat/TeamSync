@@ -1,0 +1,47 @@
+{
+  "name": "@vistafam/legacy-web",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Legacy web app (being migrated to individual product frontends)",
+  "scripts": {
+    "dev": "next dev -p 3000",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf .next node_modules"
+  },
+  "dependencies": {
+    "@vistafam/types": "workspace:*",
+    "@vistafam/ui": "workspace:*",
+    "@vistafam/hooks": "workspace:*",
+    "@vistafam/store": "workspace:*",
+    "@vistafam/utils": "workspace:*",
+    "@vistafam/realtime": "workspace:*",
+    "@vistafam/validation": "workspace:*",
+    "@supabase/supabase-js": "^2.45.0",
+    "@tanstack/react-query": "^5.50.0",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "framer-motion": "^11.0.0",
+    "lucide-react": "^0.546.0",
+    "next": "^15.0.0",
+    "next-themes": "^0.4.6",
+    "react": "^19.0.1",
+    "react-dom": "^19.0.1",
+    "react-hook-form": "^7.52.0",
+    "sonner": "^2.0.0",
+    "tailwind-merge": "^3.6.0",
+    "zod": "^3.23.0",
+    "zustand": "^5.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "autoprefixer": "^10.4.0",
+    "postcss": "^8.4.0",
+    "tailwindcss": "^3.4.0",
+    "typescript": "^5.5.0"
+  }
+}

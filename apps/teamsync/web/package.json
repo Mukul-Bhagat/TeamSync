@@ -1,0 +1,38 @@
+{
+  "name": "@vistafam/teamsync-web",
+  "version": "0.1.0",
+  "private": true,
+  "description": "VistaFam TeamSync Web - Next.js communication and collaboration frontend",
+  "scripts": {
+    "build": "next build",
+    "dev": "next dev -p 3002",
+    "start": "next start -p 3002",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "clean": "rm -rf .next"
+  },
+  "dependencies": {
+    "next": "15.0.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "socket.io-client": "^4.7.0",
+    "zustand": "^4.5.0",
+    "zod": "^3.23.0",
+    "@vistafam/ui": "workspace:*",
+    "@vistafam/sdk": "workspace:*",
+    "@vistafam/types": "workspace:*",
+    "@vistafam/hooks": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@types/node": "^20.0.0",
+    "typescript": "^5.5.0",
+    "tailwindcss": "^4.0.0",
+    "postcss": "^8.4.0",
+    "vitest": "^2.0.0",
+    "eslint": "^8.0.0",
+    "eslint-config-next": "15.0.0"
+  }
+}

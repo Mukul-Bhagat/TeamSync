@@ -1,0 +1,508 @@
+# VistaFam Docker Swarm Stack
+# Deploy: docker stack deploy -c docker-stack.yml vistafam
+#
+# Topology:
+#   VPS-1: Edge + Gateway + Realtime (worker nodes)
+#   VPS-2: Event Hub + AI Router + Connector (worker nodes)
+#   VPS-3: Registry + Observability + Admin (worker nodes)
+#   VPS-4: Data Layer (manager node with data affinity)
+
+version: '3.8'
+
+services:
+  # ── PipeVista Core Services ────────────────────────────────
+
+  pipevista-gateway:
+    image: vistafam/pipevista-gateway:latest
+    deploy:
+      replicas: 2
+      placement:
+        constraints: [node.labels.layer == edge]
+      update_config:
+        parallelism: 1
+        delay: 10s
+        failure_action: rollback
+        order: start-first
+      rollback_config:
+        parallelism: 1
+        delay: 5s
+    environment:
+      - NODE_ENV=production
+      - PORT=4100
+      - REDIS_URL=redis://redis-cluster:6379
+      - REGISTRY_URL=http://pipevista-registry:4103
+      - CORS_ORIGIN=${CORS_ORIGIN}
+    ports:
+      - "4100:4100"
+    networks:
+      - vistafam-overlay
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:4100/health/live"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  pipevista-event-hub:
+    image: vistafam/pipevista-event-hub:latest
+    deploy:
+      replicas: 2
+      placement:
+        constraints: [node.labels.layer == messaging]
+      update_config:
+        parallelism: 1
+        delay: 10s
+    environment:
+      - NODE_ENV=production
+      - PORT=4101
+      - NATS_URL=nats://nats-cluster:4222
+      - REDIS_URL=redis://redis-cluster:6379
+    ports:
+      - "4101:4101"
+    networks:
+      - vistafam-overlay
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:4101/health/live"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  pipevista-ai-router:
+    image: vistafam/pipevista-ai-router:latest
+    deploy:
+      replicas: 2
+      placement:
+        constraints: [node.labels.layer == ai]
+      update_config:
+        parallelism: 1
+        delay: 10s
+    environment:
+      - NODE_ENV=production
+      - PORT=4102
+      - REDIS_URL=redis://redis-cluster:6379
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}
+      - OLLAMA_URL=${OLLAMA_URL}
+    ports:
+      - "4102:4102"
+    networks:
+      - vistafam-overlay
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:4102/health/live"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  pipevista-registry:
+    image: vistafam/pipevista-registry:latest
+    deploy:
+      replicas: 2
+      placement:
+        constraints: [node.labels.layer == control]
+      update_config:
+        parallelism: 1
+        delay: 10s
+    environment:
+      - NODE_ENV=production
+      - PORT=4103
+      - REDIS_URL=redis://redis-cluster:6379
+      - DATABASE_URL=${DATABASE_URL}
+    ports:
+      - "4103:4103"
+    networks:
+      - vistafam-overlay
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:4103/health/live"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  pipevista-connector:
+    image: vistafam/pipevista-connector:latest
+    deploy:
+      replicas: 2
+      placement:
+        constraints: [node.labels.layer == integration]
+      update_config:
+        parallelism: 1
+        delay: 10s
+    environment:
+      - NODE_ENV=production
+      - PORT=4104
+      - REDIS_URL=redis://redis-cluster:6379
+    ports:
+      - "4104:4104"
+    networks:
+      - vistafam-overlay
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:4104/health/live"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  pipevista-realtime:
+    image: vistafam/pipevista-realtime:latest
+    deploy:
+      replicas: 2
+      placement:
+        constraints: [node.labels.layer == edge]
+      update_config:
+        parallelism: 1
+        delay: 10s
+        order: start-first
+    environment:
+      - NODE_ENV=production
+      - PORT=4105
+      - REDIS_URL=redis://redis-cluster:6379
+      - NATS_URL=nats://nats-cluster:4222
+    ports:
+      - "4105:4105"
+    networks:
+      - vistafam-overlay
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:4105/health/live"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  pipevista-observability:
+    image: vistafam/pipevista-observability:latest
+    deploy:
+      replicas: 2
+      placement:
+        constraints: [node.labels.layer == control]
+      update_config:
+        parallelism: 1
+        delay: 10s
+    environment:
+      - NODE_ENV=production
+      - PORT=4106
+      - LOKI_URL=http://loki:3100
+      - PROMETHEUS_URL=http://prometheus:9090
+    ports:
+      - "4106:4106"
+    networks:
+      - vistafam-overlay
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:4106/health/live"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  pipevista-admin:
+    image: vistafam/pipevista-admin:latest
+    deploy:
+      replicas: 1
+      placement:
+        constraints: [node.labels.layer == control]
+      update_config:
+        parallelism: 1
+        delay: 5s
+    environment:
+      - NODE_ENV=production
+      - PORT=4107
+    ports:
+      - "4107:4107"
+    networks:
+      - vistafam-overlay
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:4107/health/live"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  # ── Ecosystem Services (also routed through PipeVista) ─────
+
+  flowboard:
+    image: vistafam/flowboard:latest
+    deploy:
+      replicas: 2
+      placement:
+        constraints: [node.labels.layer == app]
+      update_config:
+        parallelism: 1
+        delay: 10s
+    environment:
+      - NODE_ENV=production
+      - PORT=4003
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=redis://redis-cluster:6379
+      - NATS_URL=nats://nats-cluster:4222
+      - AI_ROUTER_URL=http://pipevista-ai-router:4102
+      - EVENT_HUB_URL=http://pipevista-event-hub:4101
+      - REALTIME_URL=http://pipevista-realtime:4105
+    ports:
+      - "4003:4003"
+    networks:
+      - vistafam-overlay
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:4003/health/live"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  authsphere:
+    image: vistafam/authsphere:latest
+    deploy:
+      replicas: 2
+      placement:
+        constraints: [node.labels.layer == app]
+    environment:
+      - NODE_ENV=production
+      - PORT=4001
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=redis://redis-cluster:6379
+      - NATS_URL=nats://nats-cluster:4222
+    networks:
+      - vistafam-overlay
+
+  teamsync-api:
+    image: vistafam/teamsync-api:latest
+    deploy:
+      replicas: 2
+      placement:
+        constraints: [node.labels.layer == app]
+    environment:
+      - NODE_ENV=production
+      - PORT=4002
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=redis://redis-cluster:6379
+      - NATS_URL=nats://nats-cluster:4222
+    networks:
+      - vistafam-overlay
+
+  teamsync-web:
+    image: vistafam/teamsync-web:latest
+    deploy:
+      replicas: 2
+      placement:
+        constraints: [node.labels.layer == edge]
+    environment:
+      - NODE_ENV=production
+      - PORT=3002
+    networks:
+      - vistafam-overlay
+
+  flowboard:
+    image: vistafam/flowboard:latest
+    deploy:
+      replicas: 2
+    environment:
+      - NODE_ENV=production
+      - PORT=4003
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=redis://redis-cluster:6379
+      - NATS_URL=nats://nats-cluster:4222
+    networks:
+      - vistafam-overlay
+
+  vaultspace:
+    image: vistafam/vaultspace:latest
+    deploy:
+      replicas: 2
+    environment:
+      - NODE_ENV=production
+      - PORT=4004
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=redis-cluster:6379
+      - NATS_URL=nats://nats-cluster:4222
+      - MINIO_ENDPOINT=minio-cluster:9000
+    networks:
+      - vistafam-overlay
+
+  insightai:
+    image: vistafam/insightai:latest
+    deploy:
+      replicas: 2
+    environment:
+      - NODE_ENV=production
+      - PORT=4012
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=redis://redis-cluster:6379
+      - NATS_URL=nats://nats-cluster:4222
+      - AI_ROUTER_URL=http://pipevista-ai-router:4102
+    networks:
+      - vistafam-overlay
+
+  # ── Data Layer (runs on manager node) ──────────────────────
+
+  redis-cluster:
+    image: redis:7-alpine
+    deploy:
+      replicas: 6
+      placement:
+        max_replicas_per_node: 1
+        constraints: [node.labels.layer == data]
+    command: >
+      sh -c "if [ ! -f /data/nodes.conf ]; then
+        touch /data/nodes.conf;
+      fi;
+      redis-server --cluster-enabled yes
+      --cluster-config-file /data/nodes.conf
+      --cluster-node-timeout 5000
+      --appendonly yes
+      --port 6379
+      --bind 0.0.0.0
+      --protected-mode no"
+    volumes:
+      - redis-data:/data
+    networks:
+      - vistafam-overlay
+
+  nats-cluster:
+    image: nats:2-alpine
+    deploy:
+      replicas: 3
+      placement:
+        constraints: [node.labels.layer == data]
+    command: >
+      --cluster_name vistafam
+      --cluster nats://0.0.0.0:6222
+      --routes nats://nats-cluster:6222
+      --js
+      --store_dir /data/jetstream
+      --http_port 8222
+    volumes:
+      - nats-data:/data
+    networks:
+      - vistafam-overlay
+
+  postgres-primary:
+    image: postgres:16-alpine
+    deploy:
+      replicas: 1
+      placement:
+        constraints: [node.labels.layer == data]
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+      POSTGRES_DB: vistafam
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    secrets:
+      - postgres_password
+    networks:
+      - vistafam-overlay
+
+  postgres-replica:
+    image: postgres:16-alpine
+    deploy:
+      replicas: 1
+      placement:
+        constraints: [node.labels.layer == data]
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+      POSTGRES_DB: vistafam
+      PGUSER: postgres
+    volumes:
+      - postgres-replica-data:/var/lib/postgresql/data
+    secrets:
+      - postgres_password
+    networks:
+      - vistafam-overlay
+
+  minio-cluster:
+    image: minio/minio:latest
+    deploy:
+      replicas: 4
+      placement:
+        max_replicas_per_node: 1
+        constraints: [node.labels.layer == data]
+    command: server http://minio-cluster{1...4}/data{1...2} --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER_FILE: /run/secrets/minio_access_key
+      MINIO_ROOT_PASSWORD_FILE: /run/secrets/minio_secret_key
+    volumes:
+      - minio-data:/data
+    secrets:
+      - minio_access_key
+      - minio_secret_key
+    networks:
+      - vistafam-overlay
+
+  # ── Observability Stack ────────────────────────────────────
+
+  loki:
+    image: grafana/loki:latest
+    deploy:
+      replicas: 1
+      placement:
+        constraints: [node.labels.layer == data]
+    volumes:
+      - ./loki.yml:/etc/loki/local-config.yaml:ro
+      - loki-data:/loki
+    networks:
+      - vistafam-overlay
+
+  prometheus:
+    image: prom/prometheus:latest
+    deploy:
+      replicas: 1
+      placement:
+        constraints: [node.labels.layer == data]
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    networks:
+      - vistafam-overlay
+
+  grafana:
+    image: grafana/grafana:latest
+    deploy:
+      replicas: 1
+      placement:
+        constraints: [node.labels.layer == data]
+    volumes:
+      - grafana-data:/var/lib/grafana
+    networks:
+      - vistafam-overlay
+
+  # ── Edge: NGINX ────────────────────────────────────────────
+
+  nginx:
+    image: nginx:alpine
+    deploy:
+      replicas: 1
+      placement:
+        constraints: [node.labels.layer == edge]
+      ports:
+        - "80:80"
+        - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    networks:
+      - vistafam-overlay
+    depends_on:
+      - pipevista-gateway
+      - pipevista-realtime
+
+# ── Networks ─────────────────────────────────────────────────
+networks:
+  vistafam-overlay:
+    driver: overlay
+    attachable: true
+    ipam:
+      config:
+        - subnet: 10.200.0.0/16
+
+# ── Volumes ──────────────────────────────────────────────────
+volumes:
+  redis-data:
+  nats-data:
+  postgres-data:
+  postgres-replica-data:
+  minio-data:
+  loki-data:
+  prometheus-data:
+  grafana-data:
+
+# ── Secrets ──────────────────────────────────────────────────
+secrets:
+  postgres_password:
+    external: true
+  minio_access_key:
+    external: true
+  minio_secret_key:
+    external: true

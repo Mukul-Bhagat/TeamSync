@@ -1,0 +1,9 @@
+{
+  "name": "TeamSync Enterprise",
+  "description": "The AI-native operating system for modern engineering organizations. A unified platform for real-time collaboration, workflow automation, autonomous AI agents, and ecosystem orchestration.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ],
+  "majorCapabilities": []
+}

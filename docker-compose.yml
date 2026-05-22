@@ -1,0 +1,442 @@
+# VistaFam Enterprise - Full Stack Docker Compose
+# Phase 1: Docker Compose for 10-10,000 users
+# Run: docker-compose up -d
+
+version: '3.8'
+
+services:
+  # ── Edge Layer ──────────────────────────────────────────────
+  nginx:
+    image: nginx:alpine
+    container_name: vistafam-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./infrastructure/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./infrastructure/nginx/ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - gateway
+    networks:
+      - vistafam
+
+  # ── API Gateway ─────────────────────────────────────────────
+  gateway:
+    build:
+      context: .
+      dockerfile: docker/gateway.Dockerfile
+    container_name: vistafam-gateway
+    environment:
+      - NODE_ENV=development
+      - PORT=4000
+      - NATS_URL=nats://nats:4222
+      - REDIS_URL=redis://redis:6379
+      - AUTHSPHERE_URL=http://authsphere:4001
+      - PIPEVISTA_URL=http://pipevista:4006
+      - JWT_PUBLIC_KEY=${JWT_PUBLIC_KEY}
+    ports:
+      - "4000:4000"
+    depends_on:
+      - nats
+      - redis
+      - authsphere
+      - pipevista
+    networks:
+      - vistafam
+
+  # ── Core Services ───────────────────────────────────────────
+  authsphere:
+    build:
+      context: .
+      dockerfile: docker/authsphere.Dockerfile
+    container_name: vistafam-authsphere
+    environment:
+      - NODE_ENV=development
+      - PORT=4001
+      - DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/vistafam?schema=authsphere
+      - REDIS_URL=redis://redis:6379
+      - NATS_URL=nats://nats:4222
+      - JWT_PRIVATE_KEY=${JWT_PRIVATE_KEY}
+    ports:
+      - "4001:4001"
+    depends_on:
+      - postgres
+      - redis
+      - nats
+    networks:
+      - vistafam
+
+  teamsync-api:
+    build:
+      context: .
+      dockerfile: docker/teamsync-api.Dockerfile
+    container_name: vistafam-teamsync-api
+    environment:
+      - NODE_ENV=development
+      - PORT=4002
+      - DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/vistafam?schema=teamsync
+      - REDIS_URL=redis://redis:6379
+      - NATS_URL=nats://nats:4222
+      - AUTHSPHERE_URL=http://authsphere:4001
+    ports:
+      - "4002:4002"
+    depends_on:
+      - postgres
+      - redis
+      - nats
+      - authsphere
+    networks:
+      - vistafam
+
+  teamsync-web:
+    build:
+      context: .
+      dockerfile: docker/teamsync-web.Dockerfile
+    container_name: vistafam-teamsync-web
+    environment:
+      - NODE_ENV=development
+      - PORT=3002
+      - NEXT_PUBLIC_API_URL=/api/v1
+      - NEXT_PUBLIC_WS_URL=ws://localhost:4002
+    ports:
+      - "3002:3002"
+    depends_on:
+      - gateway
+      - teamsync-api
+    networks:
+      - vistafam
+
+  flowboard:
+    build:
+      context: .
+      dockerfile: docker/flowboard.Dockerfile
+    container_name: vistafam-flowboard
+    environment:
+      - NODE_ENV=development
+      - PORT=4003
+      - DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/vistafam?schema=flowboard
+      - REDIS_URL=redis://redis:6379
+      - NATS_URL=nats://nats:4222
+      - AUTHSPHERE_URL=http://authsphere:4001
+    ports:
+      - "4003:4003"
+    depends_on:
+      - postgres
+      - redis
+      - nats
+      - authsphere
+    networks:
+      - vistafam
+
+  vaultspace:
+    build:
+      context: .
+      dockerfile: docker/vaultspace.Dockerfile
+    container_name: vistafam-vaultspace
+    environment:
+      - NODE_ENV=development
+      - PORT=4004
+      - DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/vistafam?schema=vaultspace
+      - REDIS_URL=redis://redis:6379
+      - NATS_URL=nats://nats:4222
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY}
+      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY}
+    ports:
+      - "4004:4004"
+    depends_on:
+      - postgres
+      - redis
+      - nats
+      - minio
+      - authsphere
+    networks:
+      - vistafam
+
+  loglens:
+    build:
+      context: .
+      dockerfile: docker/loglens.Dockerfile
+    container_name: vistafam-loglens
+    environment:
+      - NODE_ENV=development
+      - PORT=4007
+      - DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/vistafam?schema=loglens
+      - REDIS_URL=redis://redis:6379
+      - NATS_URL=nats://nats:4222
+      - LOKI_URL=http://loki:3100
+      - AUTHSPHERE_URL=http://authsphere:4001
+    ports:
+      - "4007:4007"
+    depends_on:
+      - postgres
+      - redis
+      - nats
+      - loki
+      - authsphere
+    networks:
+      - vistafam
+
+  devpulse:
+    build:
+      context: .
+      dockerfile: docker/devpulse.Dockerfile
+    container_name: vistafam-devpulse
+    environment:
+      - NODE_ENV=development
+      - PORT=4008
+      - DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/vistafam?schema=devpulse
+      - REDIS_URL=redis://redis:6379
+      - NATS_URL=nats://nats:4222
+      - AUTHSPHERE_URL=http://authsphere:4001
+    ports:
+      - "4008:4008"
+    depends_on:
+      - postgres
+      - redis
+      - nats
+      - authsphere
+    networks:
+      - vistafam
+
+  schemaforge:
+    build:
+      context: .
+      dockerfile: docker/schemaforge.Dockerfile
+    container_name: vistafam-schemaforge
+    environment:
+      - NODE_ENV=development
+      - PORT=4009
+      - DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/vistafam?schema=schemaforge
+      - REDIS_URL=redis://redis:6379
+      - NATS_URL=nats://nats:4222
+      - AUTHSPHERE_URL=http://authsphere:4001
+    ports:
+      - "4009:4009"
+    depends_on:
+      - postgres
+      - redis
+      - nats
+      - authsphere
+    networks:
+      - vistafam
+
+  querymind:
+    build:
+      context: .
+      dockerfile: docker/querymind.Dockerfile
+    container_name: vistafam-querymind
+    environment:
+      - NODE_ENV=development
+      - PORT=4010
+      - DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/vistafam?schema=querymind
+      - REDIS_URL=redis://redis:6379
+      - NATS_URL=nats://nats:4222
+      - AUTHSPHERE_URL=http://authsphere:4001
+      - INSIGHTAI_URL=http://insightai:4012
+    ports:
+      - "4010:4010"
+    depends_on:
+      - postgres
+      - redis
+      - nats
+      - authsphere
+      - insightai
+    networks:
+      - vistafam
+
+  deployhub:
+    build:
+      context: .
+      dockerfile: docker/deployhub.Dockerfile
+    container_name: vistafam-deployhub
+    environment:
+      - NODE_ENV=development
+      - PORT=4011
+      - DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/vistafam?schema=deployhub
+      - REDIS_URL=redis://redis:6379
+      - NATS_URL=nats://nats:4222
+      - AUTHSPHERE_URL=http://authsphere:4001
+    ports:
+      - "4011:4011"
+    depends_on:
+      - postgres
+      - redis
+      - nats
+      - authsphere
+    networks:
+      - vistafam
+
+  insightai:
+    build:
+      context: .
+      dockerfile: docker/insightai.Dockerfile
+    container_name: vistafam-insightai
+    environment:
+      - NODE_ENV=development
+      - PORT=4012
+      - DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/vistafam?schema=insightai
+      - REDIS_URL=redis://redis:6379
+      - NATS_URL=nats://nats:4222
+      - AUTHSPHERE_URL=http://authsphere:4001
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+    ports:
+      - "4012:4012"
+    depends_on:
+      - postgres
+      - redis
+      - nats
+      - authsphere
+    networks:
+      - vistafam
+
+  pipevista:
+    build:
+      context: .
+      dockerfile: docker/pipevista.Dockerfile
+    container_name: vistafam-pipevista
+    environment:
+      - NODE_ENV=development
+      - PORT=4006
+      - DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/vistafam?schema=pipevista
+      - REDIS_URL=redis://redis:6379
+      - NATS_URL=nats://nats:4222
+      - AUTHSPHERE_URL=http://authsphere:4001
+    ports:
+      - "4006:4006"
+      - "8222:8222"
+    depends_on:
+      - postgres
+      - redis
+      - nats
+      - authsphere
+    networks:
+      - vistafam
+
+  # ── Infrastructure ──────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: vistafam-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: vistafam
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./supabase/migrations:/docker-entrypoint-initdb.d
+    ports:
+      - "5432:5432"
+    networks:
+      - vistafam
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: vistafam-redis
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    networks:
+      - vistafam
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  nats:
+    image: nats:2-alpine
+    container_name: vistafam-nats
+    command: "--js --store_dir /data/jetstream --http_port 8222"
+    volumes:
+      - nats_data:/data/jetstream
+    ports:
+      - "4222:4222"
+      - "8222:8222"
+    networks:
+      - vistafam
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8222/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  minio:
+    image: minio/minio:latest
+    container_name: vistafam-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY}
+    volumes:
+      - minio_data:/data
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    networks:
+      - vistafam
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  # ── Observability ───────────────────────────────────────────
+  loki:
+    image: grafana/loki:latest
+    container_name: vistafam-loki
+    volumes:
+      - ./infrastructure/loki/loki.yml:/etc/loki/local-config.yaml:ro
+      - loki_data:/loki
+    ports:
+      - "3100:3100"
+    networks:
+      - vistafam
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: vistafam-prometheus
+    volumes:
+      - ./infrastructure/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    ports:
+      - "9090:9090"
+    networks:
+      - vistafam
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: vistafam-grafana
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./infrastructure/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./infrastructure/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+    ports:
+      - "3001:3000"
+    networks:
+      - vistafam
+    depends_on:
+      - prometheus
+      - loki
+
+# ── Volumes ─────────────────────────────────────────────────
+volumes:
+  postgres_data:
+  redis_data:
+  nats_data:
+  minio_data:
+  loki_data:
+  prometheus_data:
+  grafana_data:
+
+# ── Networks ────────────────────────────────────────────────
+networks:
+  vistafam:
+    driver: bridge
