@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getSupabaseClient } from "@pipesync/database";
-import { useWorkspaceStore } from "@pipesync/store";
-import type { Workspace, CreateWorkspaceInput } from "@pipesync/types";
+import { getSupabaseClient } from "@vistafam/database";
+import { useWorkspaceStore } from "@vistafam/store";
+import type { Workspace, CreateWorkspaceInput } from "@vistafam/types";
 
 export function useWorkspaces() {
   return useQuery({

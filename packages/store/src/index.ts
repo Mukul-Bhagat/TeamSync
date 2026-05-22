@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { AuthUser, Workspace } from "@pipesync/types";
+import type { AuthUser, Workspace } from "@vistafam/types";
 
 interface UIState {
   sidebarOpen: boolean;

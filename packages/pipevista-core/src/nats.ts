@@ -129,12 +129,13 @@ export async function subscribeToEvents(
       try {
         const event = jc.decode(msg.data);
         await handler(event, msg);
-        if (!msg.didRespond && msg.respond) {
+        if (msg.respond) {
           msg.respond(sc.encode('OK'));
         }
       } catch (error) {
         console.error(`[pipevista-core:nats] Error handling ${subject}:`, error);
-        if (msg.nak) msg.nak();
+        const m = msg as any;
+        if (m.nak) m.nak();
       }
     }
   })();
@@ -167,7 +168,7 @@ export async function createStream(
       max_age: options?.maxAge ?? 30 * 24 * 60 * 60 * 1000,
       max_bytes: options?.maxBytes ?? -1,
       num_replicas: options?.replicas ?? 1,
-    });
+    } as any);
     console.log(`[pipevista-core:nats] Stream created: ${streamName}`);
   } catch (err: any) {
     if (err.message?.includes('already exists')) {
@@ -195,7 +196,7 @@ export async function createConsumer(
       max_deliver: options?.maxDeliver ?? 5,
       ack_wait: options?.ackWait ?? 30_000,
       ack_policy: 'explicit',
-    });
+    } as any);
     console.log(`[pipevista-core:nats] Consumer created: ${consumerName} on ${streamName}`);
   } catch (err: any) {
     if (err.message?.includes('already exists')) {

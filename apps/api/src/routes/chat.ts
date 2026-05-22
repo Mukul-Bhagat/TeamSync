@@ -1,5 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import { createServiceClient } from "@pipesync/database";
+import { createServiceClient } from "@vistafam/database";
 
 export async function chatRoutes(app: FastifyInstance) {
   app.get("/channels", async (request, reply) => {

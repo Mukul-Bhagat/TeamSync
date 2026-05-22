@@ -2,11 +2,11 @@
 
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getSupabaseClient } from "@pipesync/database";
+import { getSupabaseClient } from "@vistafam/database";
 import { motion } from "framer-motion";
 import { Plus, CheckSquare, Calendar, User } from "lucide-react";
 import { toast } from "sonner";
-import type { Task, TaskStatus } from "@pipesync/types";
+import type { Task, TaskStatus } from "@vistafam/types";
 
 const statusColors: Record<TaskStatus, string> = {
   todo: "bg-white/5 text-white/40",

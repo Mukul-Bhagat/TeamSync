@@ -1,5 +1,5 @@
 import type { FastifyRequest, FastifyReply } from "fastify";
-import { createServiceClient } from "@pipesync/database";
+import { createServiceClient } from "@vistafam/database";
 
 export async function verifyAuth(request: FastifyRequest, reply: FastifyReply) {
   const authHeader = request.headers.authorization;

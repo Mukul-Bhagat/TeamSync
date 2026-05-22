@@ -63,4 +63,5 @@ class CacheManager {
 }
 
 export const cache = new CacheManager();
-export { CacheManager, CacheProvider, MemoryCache };
+export { CacheManager, MemoryCache };
+export type { CacheProvider };

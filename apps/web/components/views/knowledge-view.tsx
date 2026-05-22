@@ -2,10 +2,10 @@
 
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { getSupabaseClient } from "@pipesync/database";
+import { getSupabaseClient } from "@vistafam/database";
 import { motion } from "framer-motion";
 import { BookOpen, FileText, ChevronRight } from "lucide-react";
-import type { KnowledgePage, KnowledgeCategory } from "@pipesync/types";
+import type { KnowledgePage, KnowledgeCategory } from "@vistafam/types";
 
 export function KnowledgeView() {
   const [selectedPage, setSelectedPage] = useState<KnowledgePage | null>(null);

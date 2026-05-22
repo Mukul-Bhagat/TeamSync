@@ -20,6 +20,7 @@
   "dependencies": {
     "@vistafam/types": "workspace:*",
     "@prisma/client": "^5.15.0",
+    "@supabase/supabase-js": "^2.45.0",
     "prisma": "^5.15.0"
   },
   "devDependencies": {

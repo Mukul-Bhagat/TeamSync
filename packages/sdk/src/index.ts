@@ -1,4 +1,4 @@
-import type { ApiResponse, PaginatedResponse, QueryParams } from "@pipesync/types";
+import type { ApiResponse, PaginatedResponse, QueryParams } from "@vistafam/types";
 
 class ApiClient {
   private baseUrl: string;

@@ -1,7 +1,7 @@
 "use client";
 
 import { Search, Bell, LogOut } from "lucide-react";
-import { signOut } from "@pipesync/auth";
+import { signOut } from "@vistafam/auth";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
 

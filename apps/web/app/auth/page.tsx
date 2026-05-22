@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { signInWithEmail, signUp, signInWithOAuth } from "@pipesync/auth";
+import { signInWithEmail, signUp, signInWithOAuth } from "@vistafam/auth";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
 import { Loader2, Mail, Lock, User, Github } from "lucide-react";

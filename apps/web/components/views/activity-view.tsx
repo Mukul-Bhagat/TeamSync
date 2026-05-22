@@ -1,10 +1,10 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { getSupabaseClient } from "@pipesync/database";
+import { getSupabaseClient } from "@vistafam/database";
 import { motion } from "framer-motion";
 import { Activity, FolderKanban, CheckSquare, MessageSquare, UserPlus } from "lucide-react";
-import type { Activity as ActivityItem } from "@pipesync/types";
+import type { Activity as ActivityItem } from "@vistafam/types";
 
 const activityIcons: Record<string, React.ElementType> = {
   project_created: FolderKanban,

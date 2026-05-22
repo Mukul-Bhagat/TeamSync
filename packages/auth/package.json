@@ -1,5 +1,5 @@
 {
-  "name": "@pipesync/auth",
+  "name": "@vistafam/auth",
   "version": "0.1.0",
   "private": true,
   "main": "./src/index.ts",
@@ -10,8 +10,8 @@
     "clean": "rm -rf node_modules dist"
   },
   "dependencies": {
-    "@pipesync/types": "*",
-    "@pipesync/database": "*",
+    "@vistafam/types": "workspace:*",
+    "@vistafam/database": "workspace:*",
     "@supabase/supabase-js": "^2.45.0"
   },
   "devDependencies": {

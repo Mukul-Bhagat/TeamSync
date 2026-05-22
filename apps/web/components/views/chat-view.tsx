@@ -2,11 +2,11 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getSupabaseClient } from "@pipesync/database";
+import { getSupabaseClient } from "@vistafam/database";
 import { motion } from "framer-motion";
 import { Hash, Send, Plus } from "lucide-react";
 import { toast } from "sonner";
-import type { Channel, Message } from "@pipesync/types";
+import type { Channel, Message } from "@vistafam/types";
 
 export function ChatView() {
   const [selectedChannel, setSelectedChannel] = useState<Channel | null>(null);

@@ -1,6 +1,6 @@
 import { useEffect } from "react";
-import { useAuthStore } from "@pipesync/store";
-import { getUser, onAuthStateChange } from "@pipesync/auth";
+import { useAuthStore } from "@vistafam/store";
+import { getUser, onAuthStateChange } from "@vistafam/auth";
 
 export function useAuth() {
   const { user, loading, setUser, setLoading } = useAuthStore();

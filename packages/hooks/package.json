@@ -15,6 +15,9 @@
   },
   "dependencies": {
     "@vistafam/types": "workspace:*",
+    "@vistafam/store": "workspace:*",
+    "@vistafam/database": "workspace:*",
+    "@vistafam/auth": "workspace:*",
     "@tanstack/react-query": "^5.50.0",
     "react": "^19.0.1"
   },

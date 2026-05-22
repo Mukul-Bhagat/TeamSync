@@ -53,7 +53,7 @@ export async function registerRequestLogger(app: FastifyInstance, serviceName: s
   });
 
   app.addHook('onResponse', async (req, reply) => {
-    const duration = reply.getResponseTime();
+    const duration = (reply as any).getResponseTime();
     console.log(
       `[${serviceName}] ${req.method} ${req.url} ${reply.statusCode} ${duration.toFixed(2)}ms ` +
       `tid=${req.tenantContext?.traceId ?? 'none'} tenant=${req.tenantContext?.tenantId ?? 'none'}`
@@ -94,11 +94,11 @@ export function registerErrorHandler(app: FastifyInstance, serviceName: string):
     const statusCode = (error as any).statusCode ?? 500;
     const isProd = process.env.NODE_ENV === 'production';
 
-    console.error(`[${serviceName}] Error on ${req.url}:`, error.message);
+    console.error(`[${serviceName}] Error on ${req.url}:`, (error as Error).message);
 
     reply.status(statusCode).send({
       error: 'Internal Server Error',
-      message: isProd ? 'Something went wrong' : error.message,
+      message: isProd ? 'Something went wrong' : (error as Error).message,
       requestId: req.tenantContext?.requestId,
       traceId: req.tenantContext?.traceId,
     });

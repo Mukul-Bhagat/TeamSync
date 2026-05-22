@@ -1,5 +1,5 @@
-import { getSupabaseClient, createServiceClient, SupabaseClient } from "@pipesync/database";
-import type { AuthUser, LoginCredentials, RegisterCredentials } from "@pipesync/types";
+import { getSupabaseClient, createServiceClient, SupabaseClient } from "@vistafam/database";
+import type { AuthUser, LoginCredentials, RegisterCredentials } from "@vistafam/types";
 
 export async function signInWithEmail(credentials: LoginCredentials) {
   const supabase = getSupabaseClient();

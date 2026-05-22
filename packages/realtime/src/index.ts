@@ -1,4 +1,4 @@
-import { getSupabaseClient } from "@pipesync/database";
+import { getSupabaseClient } from "@vistafam/database";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 
 export type SubscriptionCallback<T> = (payload: T) => void;

@@ -2,7 +2,7 @@ import Fastify from "fastify";
 import cors from "@fastify/cors";
 import helmet from "@fastify/helmet";
 import rateLimit from "@fastify/rate-limit";
-import { logger } from "@pipesync/logger";
+import { logger } from "@vistafam/logger";
 import { apiRoutes } from "./routes";
 import { errorHandler } from "./lib/error-handler";
 

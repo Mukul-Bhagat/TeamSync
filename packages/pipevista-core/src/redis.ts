@@ -3,9 +3,9 @@
  * Shared Redis connection with connection pooling and key namespace helpers
  */
 
-import Redis from 'ioredis';
+import Redis, { Cluster } from 'ioredis';
 
-let redisClient: Redis | null = null;
+let redisClient: Redis | Cluster | null = null;
 
 export interface RedisConfig {
   url?: string;
@@ -18,16 +18,17 @@ export interface RedisConfig {
   maxRetriesPerRequest?: number;
 }
 
-export function createRedisClient(config: RedisConfig = {}): Redis {
+export function createRedisClient(config: RedisConfig = {}): Redis | Cluster {
+  let client: Redis | Cluster;
   if (config.cluster && config.clusterNodes) {
-    redisClient = new Redis.Cluster(config.clusterNodes, {
+    client = new Redis.Cluster(config.clusterNodes, {
       redisOptions: {
         password: config.password,
         maxRetriesPerRequest: config.maxRetriesPerRequest ?? 3,
       },
     });
   } else {
-    redisClient = new Redis({
+    client = new Redis({
       host: config.host ?? process.env.REDIS_HOST ?? 'localhost',
       port: config.port ?? parseInt(process.env.REDIS_PORT ?? '6379', 10),
       password: config.password ?? process.env.REDIS_PASSWORD,
@@ -37,18 +38,19 @@ export function createRedisClient(config: RedisConfig = {}): Redis {
     });
   }
 
-  redisClient.on('error', (err) => {
-    console.error('[pipevista-core:redis] Error:', err.message);
+  client.on('error', (err) => {
+    console.error('[pipevista-core:redis] Error:', (err as Error).message);
   });
 
-  redisClient.on('connect', () => {
+  client.on('connect', () => {
     console.log('[pipevista-core:redis] Connected');
   });
 
-  return redisClient;
+  redisClient = client;
+  return client;
 }
 
-export function getRedisClient(): Redis {
+export function getRedisClient(): Redis | Cluster {
   if (!redisClient) {
     redisClient = createRedisClient();
   }
@@ -76,12 +78,12 @@ export function buildKey(prefix: string, ...parts: string[]): string {
 
 // ── Typed Helpers ────────────────────────────────────────────
 
-export async function getJson<T>(client: Redis, key: string): Promise<T | null> {
+export async function getJson<T>(client: Redis | Cluster, key: string): Promise<T | null> {
   const value = await client.get(key);
   return value ? JSON.parse(value) : null;
 }
 
-export async function setJson<T>(client: Redis, key: string, value: T, ttlMs?: number): Promise<void> {
+export async function setJson<T>(client: Redis | Cluster, key: string, value: T, ttlMs?: number): Promise<void> {
   const serialized = JSON.stringify(value);
   if (ttlMs) {
     await client.setex(key, Math.ceil(ttlMs / 1000), serialized);
@@ -91,7 +93,7 @@ export async function setJson<T>(client: Redis, key: string, value: T, ttlMs?: n
 }
 
 export async function incrementCounter(
-  client: Redis,
+  client: Redis | Cluster,
   key: string,
   windowMs: number
 ): Promise<number> {
@@ -103,7 +105,7 @@ export async function incrementCounter(
 }
 
 export async function slidingWindowCheck(
-  client: Redis,
+  client: Redis | Cluster,
   key: string,
   maxRequests: number,
   windowMs: number
@@ -131,7 +133,7 @@ export async function slidingWindowCheck(
 }
 
 export async function acquireLock(
-  client: Redis,
+  client: Redis | Cluster,
   lockKey: string,
   ttlMs: number,
   retryMs = 100,

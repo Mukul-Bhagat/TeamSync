@@ -147,10 +147,11 @@ export async function subscribe(
       try {
         const event = jc.decode(msg.data);
         await handler(event, msg);
-        if (!msg.didRespond) msg.ack?.();
+        const m = msg as any;
+        if (!m.didRespond) m.ack?.();
       } catch (error) {
         console.error(`[events] Error handling message on ${subject}:`, error);
-        msg.nak?.();
+        (msg as any).nak?.();
       }
     }
   })();
@@ -204,7 +205,7 @@ export async function createStream(
       retention: options?.retention ?? 'limits',
       max_msgs: options?.maxMsgs ?? 10_000_000,
       max_age: options?.maxAge ?? 30 * 24 * 60 * 60 * 1000, // 30 days
-    });
+    } as any);
     console.log(`[events] Created JetStream stream: ${streamName}`);
   } catch (err: any) {
     if (err.message?.includes('already exists')) {

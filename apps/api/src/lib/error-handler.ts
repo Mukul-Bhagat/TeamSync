@@ -1,5 +1,5 @@
 import type { FastifyError, FastifyReply, FastifyRequest } from "fastify";
-import { logger } from "@pipesync/logger";
+import { logger } from "@vistafam/logger";
 
 export function errorHandler(error: FastifyError, request: FastifyRequest, reply: FastifyReply) {
   logger.error("Request error", {

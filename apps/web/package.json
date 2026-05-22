@@ -19,6 +19,8 @@
     "@vistafam/utils": "workspace:*",
     "@vistafam/realtime": "workspace:*",
     "@vistafam/validation": "workspace:*",
+    "@vistafam/database": "workspace:*",
+    "@vistafam/auth": "workspace:*",
     "@supabase/supabase-js": "^2.45.0",
     "@tanstack/react-query": "^5.50.0",
     "class-variance-authority": "^0.7.1",

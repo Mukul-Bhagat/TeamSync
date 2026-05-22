@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { getSupabaseClient } from "@pipesync/database";
+import { getSupabaseClient } from "@vistafam/database";
 import { motion } from "framer-motion";
 import { FolderKanban, CheckSquare, MessageSquare, Users } from "lucide-react";
 

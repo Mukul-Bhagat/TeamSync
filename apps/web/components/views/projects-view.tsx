@@ -2,11 +2,11 @@
 
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getSupabaseClient } from "@pipesync/database";
+import { getSupabaseClient } from "@vistafam/database";
 import { motion } from "framer-motion";
 import { Plus, FolderKanban, Calendar } from "lucide-react";
 import { toast } from "sonner";
-import type { Project } from "@pipesync/types";
+import type { Project } from "@vistafam/types";
 
 export function ProjectsView() {
   const [showNew, setShowNew] = useState(false);

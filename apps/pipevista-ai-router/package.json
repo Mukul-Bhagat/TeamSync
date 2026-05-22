@@ -17,7 +17,7 @@
     "fastify": "^4.28.0",
     "@fastify/cors": "^9.0.0",
     "@fastify/helmet": "^11.0.0",
-    "@fastify/sse-v2": "^4.0.0",
+    "fastify-sse-v2": "^4.0.0",
     "ioredis": "^5.4.0",
     "openai": "^4.52.0",
     "@anthropic-ai/sdk": "^0.24.0",

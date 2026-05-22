@@ -1,6 +1,6 @@
 import type { FastifyInstance } from "fastify";
-import { createServiceClient } from "@pipesync/database";
-import { createTaskSchema } from "@pipesync/validation";
+import { createServiceClient } from "@vistafam/database";
+import { createTaskSchema } from "@vistafam/validation";
 
 export async function taskRoutes(app: FastifyInstance) {
   app.get("/", async (request, reply) => {

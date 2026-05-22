@@ -1,5 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import { createServiceClient } from "@pipesync/database";
+import { createServiceClient } from "@vistafam/database";
 
 export async function activityRoutes(app: FastifyInstance) {
   app.get("/", async (request, reply) => {

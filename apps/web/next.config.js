@@ -1,14 +1,14 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   transpilePackages: [
-    "@pipesync/ui",
-    "@pipesync/auth",
-    "@pipesync/database",
-    "@pipesync/hooks",
-    "@pipesync/store",
-    "@pipesync/utils",
-    "@pipesync/realtime",
-    "@pipesync/validation",
+    "@vistafam/ui",
+    "@vistafam/auth",
+    "@vistafam/database",
+    "@vistafam/hooks",
+    "@vistafam/store",
+    "@vistafam/utils",
+    "@vistafam/realtime",
+    "@vistafam/validation",
   ],
   images: {
     remotePatterns: [
