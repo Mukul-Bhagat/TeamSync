@@ -11,8 +11,9 @@ import Redis from 'ioredis';
 const redisConnection = new Redis(process.env.REDIS_URL ?? 'redis://localhost:6379', {
   maxRetriesPerRequest: null,
 });
+redisConnection.on('error', (err: Error) => { /* ignore Redis errors in dev */ });
 
-const aiSummaryQueue = new Queue('teamsync:ai-summaries', { connection: redisConnection });
+const aiSummaryQueue = new Queue('teamsync-ai-summaries', { connection: redisConnection });
 
 export async function aiSummaryRoutes(app: FastifyInstance) {
   // ── Trigger AI summary ─────────────────────────────────

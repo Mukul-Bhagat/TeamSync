@@ -77,7 +77,8 @@ app.post('/api/v1/events/ingest', async (req, reply) => {
   const { Queue } = await import('bullmq');
   const Redis = (await import('ioredis')).default;
   const redisConnection = new Redis(process.env.REDIS_URL ?? 'redis://localhost:6379', { maxRetriesPerRequest: null });
-  const eventQueue = new Queue('flowboard:events', { connection: redisConnection });
+  redisConnection.on('error', (err) => logger.warn('Redis connection error', { error: err.message }));
+  const eventQueue = new Queue('flowboard-events', { connection: redisConnection });
 
   await eventQueue.add('event', body);
   reply.status(202).send({ received: true, subject: body.subject });

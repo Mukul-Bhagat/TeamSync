@@ -42,7 +42,7 @@ class Logger {
     return child;
   }
 
-  private log(level: LogLevel, message: string, context?: LogContext & { error?: Error }) {
+  private log(level: LogLevel, message: string, context?: LogContext & { error?: Error | string }) {
     const entry: LogEntry = {
       level,
       message,
@@ -56,11 +56,15 @@ class Logger {
 
     const metadata: Record<string, unknown> = {};
     if (context?.error) {
-      metadata.error = {
-        name: context.error.name,
-        message: context.error.message,
-        stack: context.error.stack,
-      };
+      if (typeof context.error === 'string') {
+        metadata.error = { message: context.error };
+      } else {
+        metadata.error = {
+          name: context.error.name,
+          message: context.error.message,
+          stack: context.error.stack,
+        };
+      }
     }
     // Copy remaining context fields
     for (const [key, value] of Object.entries(context ?? {})) {
@@ -103,11 +107,11 @@ class Logger {
     return this.log('warn', message, context);
   }
 
-  error(message: string, context?: LogContext & { error?: Error }) {
+  error(message: string, context?: LogContext & { error?: Error | string }) {
     return this.log('error', message, context);
   }
 
-  fatal(message: string, context?: LogContext & { error?: Error }) {
+  fatal(message: string, context?: LogContext & { error?: Error | string }) {
     return this.log('fatal', message, context);
   }
 

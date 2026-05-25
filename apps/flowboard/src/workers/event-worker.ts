@@ -13,13 +13,14 @@ const logger = new ServiceLogger('flowboard-event-worker');
 
 const REDIS_URL = process.env.REDIS_URL ?? 'redis://localhost:6379';
 const redisConnection = new Redis(REDIS_URL, { maxRetriesPerRequest: null });
+redisConnection.on('error', (err) => logger.warn('Redis connection error', { error: err.message }));
 
 // Queue for starting executions
-const executionQueue = new Queue('flowboard:executions', { connection: redisConnection });
+const executionQueue = new Queue('flowboard-executions', { connection: redisConnection });
 
 export function createEventWorker(concurrency = 3): Worker {
   return new Worker(
-    'flowboard:events',
+    'flowboard-events',
     async (job) => {
       const { subject, event } = job.data as {
         subject: string;

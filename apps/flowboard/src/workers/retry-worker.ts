@@ -12,10 +12,11 @@ const logger = new ServiceLogger('flowboard-retry-worker');
 
 const REDIS_URL = process.env.REDIS_URL ?? 'redis://localhost:6379';
 const redisConnection = new Redis(REDIS_URL, { maxRetriesPerRequest: null });
+redisConnection.on('error', (err) => logger.warn('Redis connection error', { error: err.message }));
 
 export function createRetryWorker(concurrency = 3): Worker {
   return new Worker(
-    'flowboard:retries',
+    'flowboard-retries',
     async (job) => {
       const { executionId, stepId, tenantId, attempt } = job.data as {
         executionId: string;

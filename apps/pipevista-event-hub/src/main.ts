@@ -120,11 +120,14 @@ async function start() {
   await app.register(cors, { origin: true, credentials: true });
   await app.register(helmet);
 
-  await connectNATS({ servers: NATS_URL, serviceName: 'pipevista-event-hub' });
-
-  // Create standard streams
-  await createStream('DOMAIN', ['*.>'], { retention: 'limits', maxMsgs: 50_000_000 });
-  await createStream('AUDIT', ['auth.audit.>'], { retention: 'limits', maxMsgs: 10_000_000 });
+  try {
+    await connectNATS({ servers: NATS_URL, serviceName: 'pipevista-event-hub' });
+    // Create standard streams
+    await createStream('DOMAIN', ['*.>'], { retention: 'limits', maxMsgs: 50_000_000 });
+    await createStream('AUDIT', ['auth.audit.>'], { retention: 'limits', maxMsgs: 10_000_000 });
+  } catch (err) {
+    logger.warn('NATS not available, running in local-only mode', { error: (err as Error).message });
+  }
 
   try {
     await app.listen({ port: PORT, host: '0.0.0.0' });

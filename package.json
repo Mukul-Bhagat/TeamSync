@@ -9,6 +9,9 @@
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev --parallel",
+    "dve": "pnpm --filter @vistafam/legacy-web dev",
+    "dev:legacy-web": "pnpm --filter @vistafam/legacy-web dev",
+    "dev:web": "turbo run dev --parallel --filter=@vistafam/legacy-web --filter=@vistafam/gateway --filter=@vistafam/legacy-api",
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
     "format": "prettier --write \"**/*.{ts,tsx,md,json}\"",

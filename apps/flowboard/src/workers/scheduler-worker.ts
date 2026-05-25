@@ -14,12 +14,13 @@ const prisma = new PrismaClient();
 
 const REDIS_URL = process.env.REDIS_URL ?? 'redis://localhost:6379';
 const redisConnection = new Redis(REDIS_URL, { maxRetriesPerRequest: null });
+redisConnection.on('error', (err) => logger.warn('Redis connection error', { error: err.message }));
 
-export const scheduledQueue = new Queue('flowboard:scheduled', { connection: redisConnection });
+export const scheduledQueue = new Queue('flowboard-scheduled', { connection: redisConnection });
 
 export function createSchedulerWorker(): Worker {
   return new Worker(
-    'flowboard:scheduled',
+    'flowboard-scheduled',
     async (job) => {
       const { workflowId, tenantId } = job.data as {
         workflowId: string;

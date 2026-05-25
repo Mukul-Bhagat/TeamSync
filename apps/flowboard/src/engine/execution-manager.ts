@@ -15,10 +15,11 @@ const prisma = new PrismaClient();
 
 const REDIS_URL = process.env.REDIS_URL ?? 'redis://localhost:6379';
 const redisConnection = new Redis(REDIS_URL, { maxRetriesPerRequest: null });
+redisConnection.on('error', (err) => logger.warn('Redis connection error', { error: err.message }));
 
 // BullMQ queues
-export const stepQueue = new Queue('flowboard:steps', { connection: redisConnection });
-export const retryQueue = new Queue('flowboard:retries', { connection: redisConnection });
+export const stepQueue = new Queue('flowboard-steps', { connection: redisConnection });
+export const retryQueue = new Queue('flowboard-retries', { connection: redisConnection });
 
 export interface CreateExecutionInput {
   workflowId: string;
@@ -39,7 +40,7 @@ export async function createExecution(input: CreateExecutionInput): Promise<Exec
     throw new Error(`Workflow not found: ${input.workflowId}`);
   }
 
-  const definition = workflow.definition as {
+  const definition = workflow.definition as unknown as {
     steps: WorkflowStep[];
     variables?: Record<string, unknown>;
   };
@@ -104,7 +105,7 @@ export async function startExecution(executionId: string): Promise<void> {
     throw new Error(`Workflow not found: ${execution.workflowId}`);
   }
 
-  const definition = workflow.definition as { steps: WorkflowStep[] };
+  const definition = workflow.definition as unknown as { steps: WorkflowStep[] };
   const dag = new DAGExecutor();
   dag.build(definition.steps);
 
@@ -155,7 +156,7 @@ export async function handleStepCompletion(
   });
   if (!workflow) return;
 
-  const definition = workflow.definition as { steps: WorkflowStep[] };
+  const definition = workflow.definition as unknown as { steps: WorkflowStep[] };
 
   // Update context with step output
   const context = execution.context as ExecutionContext;
@@ -253,7 +254,7 @@ export async function handleStepFailure(
       // Mark as failed but continue DAG
       const workflow = await prisma.workflow.findUnique({ where: { id: execution.workflowId } });
       if (!workflow) return;
-      const definition = workflow.definition as { steps: WorkflowStep[] };
+      const definition = workflow.definition as unknown as { steps: WorkflowStep[] };
       const dag = new DAGExecutor();
       dag.build(definition.steps);
 

@@ -63,6 +63,15 @@ async function start() {
     }),
   });
 
+  // Root info
+  app.get('/', async () => ({
+    service: 'VistaFam API Gateway',
+    version: '0.1.0',
+    status: 'running',
+    health: { live: '/health/live', ready: '/health/ready' },
+    upstreams: Object.values(upstreams).map((u) => u.prefix),
+  }));
+
   // Health check
   app.get('/health/live', async () => ({ status: 'alive' }));
   app.get('/health/ready', async () => ({ status: 'ready' }));
@@ -98,7 +107,7 @@ async function start() {
 
   // Error handler
   app.setErrorHandler((error, req, reply) => {
-    logger.error('Gateway error', { error: error.message, url: req.url });
+    logger.error('Gateway error', { error, url: req.url });
     reply.status(error.statusCode ?? 500).send({
       error: 'Internal Server Error',
       message: process.env.NODE_ENV === 'production' ? 'Something went wrong' : error.message,
@@ -109,7 +118,7 @@ async function start() {
     await app.listen({ port: PORT, host: '0.0.0.0' });
     logger.info(`Gateway listening on port ${PORT}`, { port: PORT, upstreams: Object.keys(upstreams) });
   } catch (err) {
-    logger.fatal('Failed to start gateway', { error: (err as Error).message });
+    logger.fatal('Failed to start gateway', { error: err as Error });
     process.exit(1);
   }
 }

@@ -1,5 +1,7 @@
 import type { FastifyError, FastifyReply, FastifyRequest } from "fastify";
-import { logger } from "@vistafam/logger";
+import { createLogger } from "@vistafam/logger";
+
+const logger = createLogger("legacy-api");
 
 export function errorHandler(error: FastifyError, request: FastifyRequest, reply: FastifyReply) {
   logger.error("Request error", {

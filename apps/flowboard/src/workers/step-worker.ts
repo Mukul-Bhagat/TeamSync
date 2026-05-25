@@ -17,10 +17,11 @@ const prisma = new PrismaClient();
 
 const REDIS_URL = process.env.REDIS_URL ?? 'redis://localhost:6379';
 const redisConnection = new Redis(REDIS_URL, { maxRetriesPerRequest: null });
+redisConnection.on('error', (err) => logger.warn('Redis connection error', { error: err.message }));
 
 export function createStepWorker(concurrency = 5): Worker {
   return new Worker(
-    'flowboard:steps',
+    'flowboard-steps',
     async (job) => {
       const { executionId, stepId, tenantId } = job.data as {
         executionId: string;
@@ -55,7 +56,7 @@ export function createStepWorker(concurrency = 5): Worker {
         throw new Error(`Workflow not found: ${execution.workflowId}`);
       }
 
-      const definition = workflow.definition as { steps: WorkflowStep[] };
+      const definition = workflow.definition as unknown as { steps: WorkflowStep[] };
       const stepDef = definition.steps.find((s) => s.id === stepId);
       if (!stepDef) {
         throw new Error(`Step not found: ${stepId}`);
@@ -67,7 +68,7 @@ export function createStepWorker(concurrency = 5): Worker {
           ? { type: execution.triggerType, payload: execution.triggerEvent as Record<string, unknown> }
           : undefined,
         workflow: { id: workflow.id, name: workflow.name, tenantId: execution.tenantId },
-        execution: { id: execution.id, startedAt: execution.startedAt?.toISOString() },
+        execution: { id: execution.id, startedAt: execution.startedAt?.toISOString() ?? '' },
         variables: (execution.context as any)?.variables ?? {},
         steps: (execution.context as any)?.steps ?? {},
         timestamp: new Date().toISOString(),

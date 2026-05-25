@@ -20,6 +20,10 @@ const redis = createRedisClient({ url: REDIS_URL });
 const pubClient = createRedisClient({ url: REDIS_URL });
 const subClient = pubClient.duplicate();
 
+redis.on('error', (err) => logger.warn('Redis connection error', { error: err.message }));
+pubClient.on('error', (err) => logger.warn('Redis connection error', { error: err.message }));
+subClient.on('error', (err) => logger.warn('Redis connection error', { error: err.message }));
+
 const io = new SocketIOServer({ cors: { origin: '*', methods: ['GET', 'POST'] } });
 
 app.get('/health/live', async () => ({ status: 'alive', service: 'pipevista-realtime' }));
@@ -99,7 +103,11 @@ async function start() {
   // Attach Socket.IO to Fastify
   await app.ready();
   io.attach(app.server!);
-  io.adapter(createAdapter(pubClient, subClient));
+  try {
+    io.adapter(createAdapter(pubClient, subClient));
+  } catch (err) {
+    logger.warn('Failed to attach Redis adapter, running without pub/sub', { error: (err as Error).message });
+  }
 
   io.on('connection', (socket) => {
     logger.info(`Socket connected: ${socket.id}`);

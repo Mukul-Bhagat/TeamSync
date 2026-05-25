@@ -68,7 +68,7 @@ async function start() {
     await app.listen({ port: PORT, host: '0.0.0.0' });
     logger.info(`AuthSphere listening on port ${PORT}`, { port: PORT });
   } catch (err) {
-    logger.fatal('Failed to start AuthSphere', { error: (err as Error).message });
+    logger.fatal('Failed to start AuthSphere', { error: err as Error });
     process.exit(1);
   }
 }

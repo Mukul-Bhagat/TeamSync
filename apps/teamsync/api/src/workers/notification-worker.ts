@@ -8,10 +8,11 @@ import Redis from 'ioredis';
 import { ServiceLogger } from '@vistafam/pipevista-core';
 import { getSupabase } from '../lib/supabase.js';
 
-const logger = new ServiceLogger('teamsync:notification-worker');
+const logger = new ServiceLogger('teamsync-notification-worker');
 const redisConnection = new Redis(process.env.REDIS_URL ?? 'redis://localhost:6379', {
   maxRetriesPerRequest: null,
 });
+redisConnection.on('error', (err: Error) => logger.warn('Redis connection error', { error: err.message }));
 
 interface NotificationJob {
   type: 'push' | 'email' | 'slack';
@@ -23,7 +24,7 @@ interface NotificationJob {
 
 export function createNotificationWorker(concurrency = 5): Worker {
   return new Worker<NotificationJob>(
-    'teamsync:notifications',
+    'teamsync-notifications',
     async (job: Job<NotificationJob>) => {
       const { type, userId, title, body, data } = job.data;
       logger.info(`Processing ${type} notification`, { userId, title });

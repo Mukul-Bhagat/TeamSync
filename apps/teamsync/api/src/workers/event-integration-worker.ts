@@ -23,37 +23,44 @@ const SUBJECT_MAP: Record<string, { channel: string; type: string; urgent: boole
 };
 
 export async function startEventIntegrationWorker(): Promise<{ close: () => Promise<void> }> {
-  const nc = await connect({ servers: process.env.NATS_URL ?? 'nats://localhost:4222' });
-  const js = nc.jetstream();
+  try {
+    const nc = await connect({ servers: process.env.NATS_URL ?? 'nats://localhost:4222' });
+    const js = nc.jetstream();
 
-  const consumer = await js.consumers.open('TEAMSYNC_EVENTS', 'teamsync-integration');
+    const consumer = await js.consumers.open('TEAMSYNC_EVENTS', 'teamsync-integration');
 
-  logger.info('Event integration worker started');
+    logger.info('Event integration worker started');
 
-  (async () => {
-    for await (const msg of consumer.consume({ max_messages: 100 })) {
-      try {
-        const event = jc.decode(msg.data) as {
-          subject: string;
-          tenantId: string;
-          payload: Record<string, unknown>;
-        };
+    (async () => {
+      for await (const msg of consumer.consume({ max_messages: 100 })) {
+        try {
+          const event = jc.decode(msg.data) as {
+            subject: string;
+            tenantId: string;
+            payload: Record<string, unknown>;
+          };
 
-        await handleEcosystemEvent(event);
-        msg.ack();
-      } catch (err) {
-        logger.error('Failed to process event', { error: (err as Error).message });
-        msg.nak();
+          await handleEcosystemEvent(event);
+          msg.ack();
+        } catch (err) {
+          logger.error('Failed to process event', { error: (err as Error).message });
+          msg.nak();
+        }
       }
-    }
-  })();
+    })();
 
-  return {
-    close: async () => {
-      await nc.drain();
-      await nc.close();
-    },
-  };
+    return {
+      close: async () => {
+        await nc.drain();
+        await nc.close();
+      },
+    };
+  } catch (err) {
+    logger.warn('NATS not available, event integration worker disabled', { error: (err as Error).message });
+    return {
+      close: async () => { /* no-op */ },
+    };
+  }
 }
 
 async function handleEcosystemEvent(event: {

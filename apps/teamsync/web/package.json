@@ -19,10 +19,13 @@
     "socket.io-client": "^4.7.0",
     "zustand": "^4.5.0",
     "zod": "^3.23.0",
+    "@tanstack/react-query": "^5.50.0",
     "@vistafam/ui": "workspace:*",
     "@vistafam/sdk": "workspace:*",
     "@vistafam/types": "workspace:*",
-    "@vistafam/hooks": "workspace:*"
+    "@vistafam/hooks": "workspace:*",
+    "@vistafam/auth": "workspace:*",
+    "@vistafam/database": "workspace:*"
   },
   "devDependencies": {
     "@types/react": "^19.0.0",

@@ -2,6 +2,15 @@ import { createClient, SupabaseClient } from "@supabase/supabase-js";
 
 let client: SupabaseClient | null = null;
 
+function isValidSupabaseUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    return parsed.hostname.endsWith(".supabase.co") || parsed.hostname.includes("supabase");
+  } catch {
+    return false;
+  }
+}
+
 export function getSupabaseClient(): SupabaseClient {
   if (client) return client;
 
@@ -16,7 +25,18 @@ export function getSupabaseClient(): SupabaseClient {
       : undefined;
 
   if (!url || !key) {
-    throw new Error("Supabase URL and key must be provided via environment variables");
+    throw new Error(
+      "Supabase URL and key must be provided via environment variables. " +
+      "Set one of the following pairs:\n" +
+      "  - NEXT_PUBLIC_SUPABASE_URL + NEXT_PUBLIC_SUPABASE_ANON_KEY (for client/browser)\n" +
+      "  - SUPABASE_URL + SUPABASE_ANON_KEY (for server)"
+    );
+  }
+
+  if (!isValidSupabaseUrl(url)) {
+    throw new Error(
+      `Invalid Supabase URL: "${url}". It must be a valid Supabase project URL (e.g., https://your-project.supabase.co).`
+    );
   }
 
   client = createClient(url, key, {

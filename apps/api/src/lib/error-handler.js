@@ -1,4 +1,5 @@
-import { logger } from "@vistafam/logger";
+import { createLogger } from "@vistafam/logger";
+const logger = createLogger("legacy-api");
 export function errorHandler(error, request, reply) {
     logger.error("Request error", {
         url: request.url,

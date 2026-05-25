@@ -2,9 +2,11 @@ import Fastify from "fastify";
 import cors from "@fastify/cors";
 import helmet from "@fastify/helmet";
 import rateLimit from "@fastify/rate-limit";
-import { logger } from "@vistafam/logger";
+import { createLogger } from "@vistafam/logger";
 import { apiRoutes } from "./routes";
 import { errorHandler } from "./lib/error-handler";
+
+const logger = createLogger("legacy-api");
 
 const app = Fastify({
   logger: false,
@@ -29,6 +31,14 @@ async function start() {
   });
 
   await app.register(apiRoutes, { prefix: "/v1" });
+
+  app.get("/", async () => ({
+    service: "VistaFam Legacy API",
+    version: "0.1.0",
+    status: "running",
+    health: "/health",
+    routes: "/v1/*",
+  }));
 
   app.get("/health", async () => ({ status: "ok", timestamp: new Date().toISOString() }));
 

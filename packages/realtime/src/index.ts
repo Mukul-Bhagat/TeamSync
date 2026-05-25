@@ -15,7 +15,7 @@ export class RealtimeService {
     const channel = supabase
       .channel(`public:${table}`)
       .on(
-        "postgres_changes",
+        "postgres_changes" as any,
         {
           event: filter?.event || "*",
           schema: "public",

@@ -9,10 +9,11 @@ import { ServiceLogger } from '@vistafam/pipevista-core';
 import { getSupabase } from '../lib/supabase.js';
 import axios from 'axios';
 
-const logger = new ServiceLogger('teamsync:ai-summary-worker');
+const logger = new ServiceLogger('teamsync-ai-summary-worker');
 const redisConnection = new Redis(process.env.REDIS_URL ?? 'redis://localhost:6379', {
   maxRetriesPerRequest: null,
 });
+redisConnection.on('error', (err: Error) => logger.warn('Redis connection error', { error: err.message }));
 
 const AI_ROUTER_URL = process.env.AI_ROUTER_URL ?? 'http://localhost:4102';
 
@@ -27,7 +28,7 @@ interface AISummaryJob {
 
 export function createAISummaryWorker(concurrency = 2): Worker {
   return new Worker<AISummaryJob>(
-    'teamsync:ai-summaries',
+    'teamsync-ai-summaries',
     async (job: Job<AISummaryJob>) => {
       const { type, channelId, threadParentId } = job.data;
       logger.info(`Generating AI summary`, { type, channelId, threadParentId });

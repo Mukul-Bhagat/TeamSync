@@ -4,7 +4,8 @@
   "private": true,
   "description": "Legacy web app (being migrated to individual product frontends)",
   "scripts": {
-    "dev": "next dev -p 3000",
+    "dev": "next dev --turbo -p 3000",
+    "dev:fast": "next dev --turbo -p 3000",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",

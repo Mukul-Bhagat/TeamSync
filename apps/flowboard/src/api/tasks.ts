@@ -117,7 +117,7 @@ export async function taskRoutes(app: FastifyInstance) {
     if (body.priority !== undefined) updateData.priority = body.priority;
     if (body.dueDate !== undefined) updateData.dueDate = new Date(body.dueDate);
     if (body.tags !== undefined) updateData.tags = body.tags;
-    if (body.boardId !== undefined) updateData.boardId = body.boardId;
+    if (body.boardId !== undefined) (updateData as any).boardId = body.boardId;
     if (body.position !== undefined) updateData.position = body.position;
 
     const task = await prisma.task.update({ where: { id }, data: updateData });

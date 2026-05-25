@@ -85,7 +85,7 @@ async function start() {
     });
     // Error handler
     app.setErrorHandler((error, req, reply) => {
-        logger.error('Gateway error', { error: error.message, url: req.url });
+        logger.error('Gateway error', { error, url: req.url });
         reply.status(error.statusCode ?? 500).send({
             error: 'Internal Server Error',
             message: process.env.NODE_ENV === 'production' ? 'Something went wrong' : error.message,
@@ -96,7 +96,7 @@ async function start() {
         logger.info(`Gateway listening on port ${PORT}`, { port: PORT, upstreams: Object.keys(upstreams) });
     }
     catch (err) {
-        logger.fatal('Failed to start gateway', { error: err.message });
+        logger.fatal('Failed to start gateway', { error: err });
         process.exit(1);
     }
 }
